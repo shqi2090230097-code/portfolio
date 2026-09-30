@@ -1,0 +1,12 @@
+---
+import { resolveMedia } from '../../lib/media';
+import MediaBlock from '../MediaBlock.astro';
+import type { Work } from '../../lib/works';
+import type { ProjectImage } from '../../lib/project-blocks';
+interface Props { work: Work; image: ProjectImage; priority?: boolean; }
+const { work, image, priority = false } = Astro.props;
+const intrinsic = await resolveMedia(work, image.media);
+---
+<div class:list={['detail-image', { 'detail-image--framed': image.ratio }]} style={`--intrinsic-ratio:${intrinsic.width / intrinsic.height};--detail-image-ratio:${image.ratio ?? 'auto'};--detail-image-fit:${image.fit}`}>
+  <MediaBlock work={work} media={image.media} priority={priority} />
+</div>

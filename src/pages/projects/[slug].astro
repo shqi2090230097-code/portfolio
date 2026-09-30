@@ -1,0 +1,12 @@
+---
+import { render } from 'astro:content';
+import ProjectDetailLayout from '../../layouts/ProjectDetailLayout.astro';
+import WorkLayout from '../../layouts/WorkLayout.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getPublishedProject } from '../../lib/works';
+const work = await getPublishedProject(Astro.params.slug ?? '');
+if (!work) Astro.response.status = 404;
+const rendered = work && !('source' in work) ? await render(work) : undefined;
+const Content = rendered?.Content;
+---
+{!work ? <BaseLayout title="页面不存在"><h1>页面不存在</h1><p>这个地址没有可公开浏览的内容。</p><a href="/work">返回全部作品</a></BaseLayout> : work.data.blocks ? <ProjectDetailLayout work={work}>{Content && <Content />}</ProjectDetailLayout> : <WorkLayout work={work}>{Content && <Content />}</WorkLayout>}

@@ -1,0 +1,20 @@
+<div class="studio-cursor" aria-hidden="true"></div>
+<script>
+  const cursor = document.querySelector<HTMLElement>('.studio-cursor');
+  const enabled = matchMedia('(hover: hover) and (pointer: fine)');
+  if (cursor) {
+    const hide = () => {
+      cursor.classList.remove('is-visible');
+      document.body.classList.remove('has-studio-pointer');
+    };
+    document.addEventListener('pointermove', event => {
+      if (!enabled.matches || event.pointerType !== 'mouse') return;
+      cursor.style.transform = `translate3d(${event.clientX}px,${event.clientY}px,0)`;
+      cursor.classList.add('is-visible');
+      document.body.classList.add('has-studio-pointer');
+    }, { passive: true });
+    document.documentElement.addEventListener('pointerleave', hide);
+    enabled.addEventListener('change', hide);
+    window.addEventListener('blur', hide);
+  }
+</script>

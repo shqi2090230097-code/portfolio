@@ -1,0 +1,139 @@
+---
+import type { Work } from '../lib/works';
+import { workUrl } from '../lib/works';
+import { workVisual } from '../lib/work-visual';
+import { resolveMedia } from '../lib/media';
+import { showcaseReferences } from '../data/showcase-references';
+interface Props { works: Work[] }
+const { works } = Astro.props;
+const count = Math.max(18, works.length);
+const slots = await Promise.all(Array.from({ length: count }, async (_, index) => {
+  const work = works[index];
+  const resolved = work ? await resolveMedia(work, workVisual(work)) : undefined;
+  const fallback = showcaseReferences[index % showcaseReferences.length];
+  const reference = resolved && 'temporaryReference' in resolved && resolved.temporaryReference
+    ? { image: resolved.src, source: resolved.referenceSource, search: resolved.referenceSearch, width: resolved.width, height: resolved.height }
+    : fallback;
+  const media = resolved?.src ? resolved : { src: reference.image, alt: `Temporary visual reference: ${reference.search}`, width: reference.width, height: reference.height };
+  return { index, work: work ?? null, media, reference };
+}));
+---
+<showcase-carousel class="showcase-scroll" data-count={count}>
+  <div class="showcase-stage">
+    <div class="showcase-caption"><span>MEILIN / SELECTED WORK</span><span>SCROLL TO ROTATE ↓</span></div>
+    <div class="showcase-orbit" aria-label="旋转作品索引">
+      {slots.map(({ index, work, media, reference }) => <article class="showcase-card" data-slot={index} data-title={work?.data.title ?? 'FUTURE WORK'} data-category={work?.data.category ?? 'REFERENCE SLOT'} data-year={work?.data.year ?? '—'}>
+        {work ? <button type="button" class="showcase-card-face" data-open={index} aria-label={`打开作品 ${work.data.title}`} tabindex={index === 0 ? 0 : -1}>
+          <span class="showcase-card-media"><img src={media.src} alt={media.alt} width={media.width} height={media.height} loading={index < 3 ? 'eager' : 'lazy'} decoding="async" /></span>
+        </button> : <div class="showcase-card-face showcase-card-future" aria-label={`预留作品展位 ${String(index + 1).padStart(2, '0')}`}><span class="showcase-card-media"><img src={media.src} alt={media.alt} width={media.width} height={media.height} loading="lazy" decoding="async" /></span><span class="showcase-reference-mark">FUTURE WORK / VISUAL REFERENCE</span></div>}
+        <a class="showcase-reference-source" href={reference.source} target="_blank" rel="noreferrer" aria-label={`临时视觉参考来源：${reference.search}`}>REFERENCE ↗</a>
+      </article>)}
+    </div>
+    <div class="showcase-center-meta"><span data-current>01</span><span class="showcase-meta-rule"></span><span>{String(count).padStart(2, '0')}</span></div>
+    <div class="showcase-center-info"><h1 data-active-title>{works[0]?.data.title ?? 'FUTURE WORK'}</h1><p data-active-category>{works[0]?.data.category ?? 'OPEN SLOT'} · {works[0]?.data.year ?? '—'}</p><span data-open-hint>{works.length ? 'CLICK THE CENTER TO ENTER ↗' : 'A PLACE FOR YOUR NEXT WORK'}</span></div>
+    <div class="showcase-scroll-hint">MOVE YOUR POINTER / SCROLL TO EXPLORE</div>
+  </div>
+  <div class="showcase-snap-points" aria-hidden="true">{slots.map(() => <div class="showcase-snap-point"></div>)}</div>
+  <dialog class="showcase-detail" aria-label="作品浏览">
+    <div class="showcase-detail-chrome"><span>MEILIN / WORK VIEWER</span><span data-detail-counter></span><button type="button" data-close aria-label="关闭作品">CLOSE ×</button></div>
+    {slots.filter(slot => slot.work).map(({ index, work, media, reference }) => work && <div class="showcase-detail-project" data-detail-index={index} hidden>
+      <div class="showcase-detail-scroll">
+        <section class="showcase-detail-scene showcase-detail-cover" aria-label={`${work.data.title} 作品画面`}>
+          <div class="showcase-detail-art"><img src={media.src} alt={media.alt} width={media.width} height={media.height} loading="lazy" /></div>
+          <div class="showcase-detail-title"><span>{String(index + 1).padStart(2, '0')} / {String(count).padStart(2, '0')}</span><h2>{work.data.title}</h2><span>SCROLL FOR THE IDEA ↓</span></div>
+        </section>
+        <section class="showcase-detail-scene showcase-detail-story" aria-label={`${work.data.title} 设计思路`}>
+          <div><span>THE IDEA / 设计思路</span><h2>{work.data.title}</h2><p>{work.data.summary}</p></div>
+          <div class="showcase-detail-story-bottom"><span>{work.data.category} · {work.data.year}</span><span><a href={reference.source} target="_blank" rel="noreferrer">TEMPORARY VISUAL REFERENCE ↗</a><a href={workUrl(work)} data-page-transition>VIEW COMPLETE PROJECT ↗</a></span></div>
+        </section>
+      </div>
+    </div>)}
+  </dialog>
+</showcase-carousel>
+<script>
+  import { wake, stop, damp } from '../lib/motion-loop';
+  class ShowcaseCarousel extends HTMLElement {
+    connectedCallback() {
+      const cards = [...this.querySelectorAll<HTMLElement>('.showcase-card')];
+      const snapPoints = [...this.querySelectorAll<HTMLElement>('.showcase-snap-point')];
+      const detail = this.querySelector<HTMLDialogElement>('.showcase-detail');
+      const currentLabel = this.querySelector<HTMLElement>('[data-current]');
+      const title = this.querySelector<HTMLElement>('[data-active-title]');
+      const category = this.querySelector<HTMLElement>('[data-active-category]');
+      const hint = this.querySelector<HTMLElement>('[data-open-hint]');
+      const counter = this.querySelector<HTMLElement>('[data-detail-counter]');
+      const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+      const fine = matchMedia('(hover: hover) and (pointer: fine)');
+      if (!cards.length) return;
+      let current = 0, target = 0, eyeX = 0, eyeY = 0, targetEyeX = 0, targetEyeY = 0, active = -1;
+      let top = 0, step = innerHeight, lastTrigger: HTMLElement | null = null;
+      const measure = () => { top = scrollY + this.getBoundingClientRect().top; step = snapPoints[0]?.getBoundingClientRect().height || innerHeight; updateTarget(); };
+      const updateTarget = () => { target = Math.max(0, Math.min(cards.length - 1, (scrollY - top) / step)); wake(tick); };
+      const tick = (dt: number) => {
+        current = damp(current, target, .105, dt);
+        eyeX = damp(eyeX, targetEyeX, .08, dt);
+        eyeY = damp(eyeY, targetEyeY, .08, dt);
+        const compact = innerWidth < 768;
+        const orbitX = compact ? innerWidth * .58 : Math.min(innerWidth * .58, 830);
+        cards.forEach((card, index) => {
+          const distance = index - current;
+          const theta = Math.max(-2.8, Math.min(2.8, distance * .77));
+          const cos = Math.cos(theta), sin = Math.sin(theta);
+          const x = sin * orbitX;
+          const y = (1 - cos) * (compact ? 58 : 92);
+          const z = (cos - 1) * (compact ? 760 : 1200);
+          const scale = Math.max(.35, .36 + .64 * Math.pow(Math.max(0, cos), 3));
+          const rotate = -sin * (compact ? 38 : 48);
+          const opacity = Math.pow(Math.max(0, cos), 2.5);
+          card.style.transform = `translate3d(calc(-50% + ${x.toFixed(1)}px), calc(-50% + ${y.toFixed(1)}px), ${z.toFixed(1)}px) rotateY(${rotate.toFixed(1)}deg) scale(${scale.toFixed(3)})`;
+          card.style.opacity = String(opacity);
+          card.style.zIndex = String(100 - Math.round(Math.abs(distance) * 12));
+          const factor = 1 - Math.min(1, Math.abs(distance));
+          const face = card.querySelector<HTMLElement>('.showcase-card-face');
+          if (face) face.style.transform = `rotateX(${(eyeY * factor).toFixed(2)}deg) rotateY(${(eyeX * factor).toFixed(2)}deg)`;
+          const image = card.querySelector<HTMLElement>('.showcase-card-media img, .showcase-card-empty');
+          if (image) image.style.transform = `translate3d(${(eyeX * 1.25).toFixed(1)}px, ${(eyeY * 1.6).toFixed(1)}px, 0) scale(1.045)`;
+          const centered = Math.abs(distance) < .12;
+          card.style.pointerEvents = centered ? 'auto' : 'none';
+          const button = card.querySelector<HTMLButtonElement>('button');
+          if (button) button.tabIndex = centered ? 0 : -1;
+        });
+        const nearest = Math.max(0, Math.min(cards.length - 1, Math.round(current)));
+        if (nearest !== active) {
+          active = nearest;
+          const card = cards[nearest], real = !!card.querySelector('button');
+          if (currentLabel) currentLabel.textContent = String(nearest + 1).padStart(2, '0');
+          if (title) title.textContent = card.dataset.title || 'FUTURE WORK';
+          if (category) category.textContent = real ? `${card.dataset.category} · ${card.dataset.year}` : 'OPEN SLOT';
+          if (hint) hint.textContent = real ? 'CLICK THE CENTER TO ENTER ↗' : 'A PLACE FOR YOUR NEXT WORK';
+        }
+        return Math.abs(target - current) + Math.abs(targetEyeX - eyeX) + Math.abs(targetEyeY - eyeY) > .015;
+      };
+      cards.forEach((card, index) => card.querySelector<HTMLButtonElement>('[data-open]')?.addEventListener('click', () => {
+        if ((!reduced.matches && Math.abs(index - current) > .12) || !detail) return;
+        lastTrigger = card.querySelector('button');
+        this.querySelectorAll<HTMLElement>('.showcase-detail-project').forEach(project => { project.hidden = project.dataset.detailIndex !== String(index); });
+        if (counter) counter.textContent = `${String(index + 1).padStart(2, '0')} / ${String(cards.length).padStart(2, '0')}`;
+        detail.showModal();
+        detail.querySelector<HTMLElement>('.showcase-detail-project:not([hidden]) .showcase-detail-scroll')?.scrollTo(0, 0);
+      }));
+      detail?.querySelector('[data-close]')?.addEventListener('click', () => detail.close());
+      detail?.addEventListener('close', () => lastTrigger?.focus({ preventScroll: true }));
+      if (reduced.matches) cards.forEach(card => { const button = card.querySelector<HTMLButtonElement>('button'); if (button) button.tabIndex = 0; });
+      if (!reduced.matches) {
+        measure(); updateTarget();
+        window.addEventListener('scroll', updateTarget, { passive: true });
+        window.addEventListener('resize', measure, { passive: true });
+        this.addEventListener('pointermove', event => {
+          if (!fine.matches || detail?.open) return;
+          targetEyeX = (event.clientX / innerWidth - .5) * 11;
+          targetEyeY = (event.clientY / innerHeight - .5) * -12;
+          wake(tick);
+        }, { passive: true });
+        this.addEventListener('pointerleave', () => { targetEyeX = 0; targetEyeY = 0; wake(tick); });
+        window.addEventListener('pagehide', () => stop(tick), { once: true });
+      }
+    }
+  }
+  if (!customElements.get('showcase-carousel')) customElements.define('showcase-carousel', ShowcaseCarousel);
+</script>

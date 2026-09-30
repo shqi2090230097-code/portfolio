@@ -1,0 +1,143 @@
+---
+import { getPublishedWorks, workUrl } from '../lib/works';
+import { resolveMedia } from '../lib/media';
+import { workVisual } from '../lib/work-visual';
+import { fanSlots } from '../design/tokens.mjs';
+import { homePresentation } from '../data/home';
+import '../styles/folder.css';
+const published = await getPublishedWorks();
+const selection = [
+  ...published.filter((work) => work.data.featured),
+  ...published.filter((work) => !work.data.featured),
+].slice(0, fanSlots.length);
+const cards = await Promise.all(fanSlots.map(async (slot) => {
+  const work = selection[slot.workIndex];
+  const cover = work ? await resolveMedia(work, workVisual(work)) : undefined;
+  const style = Object.entries({
+    'card-x': `${slot.x}cqw`, 'card-y': `${slot.y}cqw`, 'card-rotate': `${slot.rotate}deg`,
+    'card-closed-x': `${slot.closedX}cqw`, 'card-closed-y': `${slot.closedY}cqw`,
+    'card-closed-rotate': `${slot.closedRotate}deg`, 'card-closed-scale': slot.closedScale,
+    'card-width': `${slot.width}cqw`, 'card-height': `${slot.height}cqw`,
+    'card-rank': slot.rank, 'card-delay': `${slot.delay}ms`, 'card-placeholder': slot.color,
+  }).map(([key, value]) => `--${key}:${value}`).join(';');
+  return { work, cover, style, slot };
+}));
+---
+<folder-portfolio class="home-scene">
+  <h1 class="sr-only">个人作品集</h1>
+  <div class="portfolio-stage">
+    <div class="welcome-word" aria-hidden="true" data-word={homePresentation.backgroundWord}>{homePresentation.backgroundWord}</div>
+    <div class="folder-position">
+      <div class="folder-floor-shadow" aria-hidden="true"></div>
+      <div class="folder-object">
+        <div class="fan-hover-zone" aria-hidden="true"></div>
+        <div class="folder-back" aria-hidden="true"></div>
+        <div id="portfolio-fan" class="portfolio-fan" aria-label="作品预览">
+          {cards.map(({work, cover, style, slot}) => {
+            const Tag = work ? 'a' : 'div';
+            return <Tag class:list={['fan-card', { 'fan-card--empty': !work, 'fan-card--image': !slot.framed }]} style={style} data-edge-label={slot.label} href={work ? workUrl(work) : undefined} aria-label={work?.data.title} aria-hidden={!work ? 'true' : undefined} data-work-card={work ? work.id : undefined}>
+              <div class="fan-card-art">
+                {cover?.src ? <img src={cover.src} alt={cover.alt} width={cover.width} height={cover.height} loading="eager" decoding="async" /> : <div class="fan-card-placeholder">{work && <span>{work.data.type === 'project' ? 'PROJECT' : 'ARCHIVE'}</span>}</div>}
+              </div>
+              <div class="fan-card-caption">{work ? <><span>{work.data.year}</span><span class="sr-only">{work.data.title}</span></> : <span aria-hidden="true">—</span>}</div>
+            </Tag>;
+          })}
+        </div>
+        <div class="folder-front">
+          <button class="folder-toggle" type="button" aria-label="展开作品" aria-expanded="false" aria-controls="portfolio-fan">
+            {homePresentation.stickers.map((sticker, index) => <span class:list={['folder-sticker', `folder-sticker--${index + 1}`]}>
+              {sticker.src ? <img src={sticker.src} alt={sticker.alt} /> : <span aria-hidden="true">{sticker.placeholder}</span>}
+            </span>)}
+            <span class="folder-label">{homePresentation.folderLabel}</span>
+          </button>
+          <a class="folder-arrow" href="/work" aria-label="查看全部作品"><span aria-hidden="true">→</span></a>
+        </div>
+      </div>
+    </div>
+  </div>
+</folder-portfolio>
+<script>
+  import { interaction, breakpoints } from '../design/tokens.mjs';
+  class FolderPortfolio extends HTMLElement {
+    connectedCallback() {
+      const object = this.querySelector<HTMLElement>('.folder-object');
+      const toggle = this.querySelector<HTMLButtonElement>('.folder-toggle');
+      const links = [...this.querySelectorAll<HTMLAnchorElement>('a[data-work-card]')];
+      if (!object || !toggle) return;
+      const motion = matchMedia('(prefers-reduced-motion: reduce)');
+      const hover = matchMedia(`(hover: hover) and (pointer: fine) and (min-width: ${breakpoints.tablet})`);
+      const controller = new AbortController();
+      const options = { signal: controller.signal };
+      let open = false, pinned = false, suppressFocus = false, keyboardMode = false;
+      let closeTimer: ReturnType<typeof setTimeout> | undefined;
+      let frame = 0;
+      const setOpen = (value: boolean) => {
+        open = value;
+        this.classList.toggle('is-open', value);
+        toggle.setAttribute('aria-expanded', String(value));
+        toggle.setAttribute('aria-label', value ? '收起作品' : '展开作品');
+        links.forEach((link) => { link.tabIndex = value ? 0 : -1; });
+      };
+      const resetPointer = () => {
+        object.style.setProperty('--pointer-x', '0deg');
+        object.style.setProperty('--pointer-y', '0deg');
+        object.style.setProperty('--pointer-shift', '0cqw');
+      };
+      object.addEventListener('pointerenter', (event) => {
+        clearTimeout(closeTimer);
+        if (hover.matches && event.pointerType === 'mouse') { keyboardMode = false; setOpen(true); }
+      }, options);
+      object.addEventListener('pointerleave', () => {
+        resetPointer();
+        if (!pinned && !keyboardMode) closeTimer = setTimeout(() => setOpen(false), interaction.closeDelay);
+      }, options);
+      object.addEventListener('pointermove', (event) => {
+        if (!hover.matches || motion.matches || event.pointerType !== 'mouse') return;
+        cancelAnimationFrame(frame);
+        frame = requestAnimationFrame(() => {
+          const box = object.getBoundingClientRect();
+          const x = Math.max(-1, Math.min(1, (event.clientX - box.left) / box.width * 2 - 1));
+          const y = Math.max(-1, Math.min(1, (event.clientY - box.top) / box.height * 2 - 1));
+          object.style.setProperty('--pointer-x', `${-y * interaction.maxTiltX}deg`);
+          object.style.setProperty('--pointer-y', `${x * interaction.maxTiltY}deg`);
+          object.style.setProperty('--pointer-shift', `${x * interaction.maxShift}cqw`);
+        });
+      }, options);
+      toggle.addEventListener('click', (event) => {
+        pinned = !open;
+        setOpen(pinned);
+        if (pinned && event.detail === 0) links[0]?.focus();
+      }, options);
+      this.addEventListener('focusin', (event) => {
+        if (!suppressFocus && event.target instanceof Element && event.target.closest('[data-work-card]')) setOpen(true);
+      }, options);
+      this.addEventListener('focusout', () => queueMicrotask(() => {
+        if (!this.contains(document.activeElement) && !pinned) setOpen(false);
+      }), options);
+      this.addEventListener('pointerdown', () => { keyboardMode = false; }, options);
+      this.addEventListener('keydown', (event) => {
+        keyboardMode = true;
+        if (event.key === 'Escape') {
+          pinned = false;
+          setOpen(false);
+          suppressFocus = true; toggle.focus(); suppressFocus = false;
+        }
+      }, options);
+      links.forEach((link) => link.addEventListener('click', (event) => {
+        if (!open) { event.preventDefault(); pinned = true; setOpen(true); }
+      }, options));
+      document.addEventListener('pointerdown', (event) => {
+        if (!this.contains(event.target as Node) || (event.target instanceof Element && !event.target.closest('.folder-object'))) {
+          pinned = false; setOpen(false); resetPointer();
+        }
+      }, options);
+      this.addEventListener('portfolio-disconnect', () => {
+        controller.abort(); clearTimeout(closeTimer); cancelAnimationFrame(frame);
+      }, { once: true });
+      setOpen(false);
+      this.classList.add('is-ready');
+    }
+    disconnectedCallback() { this.dispatchEvent(new Event('portfolio-disconnect')); }
+  }
+  if (!customElements.get('folder-portfolio')) customElements.define('folder-portfolio', FolderPortfolio);
+</script>

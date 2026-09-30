@@ -1,0 +1,19 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import MasonryPortfolio from '../components/MasonryPortfolio.astro';
+import WorkFilters from '../components/WorkFilters.astro';
+import { getPublishedWorks } from '../lib/works';
+import { designDirections, workInDirection } from '../data/design-directions';
+import '../styles/meilin.css';
+const works = await getPublishedWorks();
+const direction = designDirections.find(item => item.slug === Astro.url.searchParams.get('direction'));
+const visibleWorks = direction ? works.filter(work => workInDirection(work, direction)) : works;
+---
+<BaseLayout title="全部作品" wide studio>
+  <div class="meilin-work-page"><div class="meilin-work-intro"><p>{direction ? `DESIGN INDEX / ${String(designDirections.indexOf(direction) + 1).padStart(2, '0')}` : 'DESIGN IS A WAY OF SEEING.'}</p><h1>Work<span>.</span></h1><p>{direction ? <><span class="meilin-direction-title">{direction.title} <small>{direction.chinese}</small></span><a class="meilin-direction-link" href="/work">VIEW ALL WORK ↗</a></> : <>Selected projects, visual experiments, and ongoing explorations. <a class="meilin-direction-link" href="/design-index">EXPLORE DESIGN INDEX ↗</a></>}</p></div>
+    <details class="meilin-filters"><summary>FILTER WORK <span class="meilin-filter-dot" aria-hidden="true"></span></summary><div><WorkFilters works={visibleWorks} /><p data-work-count role="status" aria-live="polite">共 {visibleWorks.length} 件作品</p></div></details>
+    <MasonryPortfolio works={visibleWorks} heading={direction ? direction.title : 'All projects'} />
+    {visibleWorks.length === 0 && <p class="meilin-filter-empty">这个方向还没有已发布作品。<a href="/design-index">返回 Design Index ↗</a></p>}
+    {visibleWorks.length > 0 && <p class="meilin-filter-empty" data-work-empty hidden>没有符合当前筛选的作品。</p>}
+  </div>
+</BaseLayout>

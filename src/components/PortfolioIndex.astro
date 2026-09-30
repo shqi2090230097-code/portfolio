@@ -1,0 +1,76 @@
+---
+import { designDirections, workInDirection } from '../data/design-directions';
+import { workVisual } from '../lib/work-visual';
+import { resolveMedia } from '../lib/media';
+import type { Work } from '../lib/works';
+interface Props { works: Work[] }
+const { works } = Astro.props;
+const previews = await Promise.all(designDirections.map(async direction => {
+  const work = works.find(item => workInDirection(item, direction));
+  const media = work ? await resolveMedia(work, workVisual(work)) : undefined;
+  return { direction, media };
+}));
+---
+<portfolio-index class="portfolio-index" id="project-index" aria-labelledby="portfolio-index-title">
+  <div class="portfolio-index-head">
+    <p>DESIGN INDEX <span>— 06 EXPLORATIONS</span></p>
+    <p>精选作品 · 六个创作方向</p>
+  </div>
+  <h2 id="portfolio-index-title" class="sr-only">设计索引 · 六个创作方向</h2>
+  <div class="portfolio-index-list">
+    {designDirections.map((direction, index) => <a class="portfolio-index-row" href={`/work?direction=${direction.slug}`} data-index={index} data-page-transition aria-label={`浏览${direction.chinese}方向的作品`}>
+      <span class="portfolio-index-dot" aria-hidden="true"></span>
+      <span class="portfolio-index-label"><span class="portfolio-index-name">{direction.title}</span><span class="portfolio-index-chinese">{direction.chinese}</span></span>
+      <span class="portfolio-index-number">{String(index + 1).padStart(2, '0')}</span>
+    </a>)}
+  </div>
+  <div class="portfolio-index-preview" aria-live="off" aria-label="创作方向预览">
+    <div class="portfolio-index-preview-stack">
+      {previews.map(({ direction, media }, index) => <div class="portfolio-index-preview-frame" data-preview={index} style={`--concept-bg:${direction.background};--concept-fg:${direction.foreground}`} aria-hidden="true">
+        <div class="portfolio-index-preview-art" aria-hidden="true">{media?.src ? <img src={media.src} alt="" width={media.width} height={media.height} loading="lazy" /> : <><span>VISUAL DIRECTION / {String(index + 1).padStart(2, '0')}</span><strong>{direction.title}</strong></>}</div>
+        <div class="portfolio-index-preview-caption"><span>{direction.chinese}</span><span>{media?.src ? 'SELECTED WORK' : 'IMAGE PENDING'}</span></div>
+      </div>)}
+    </div>
+    <p class="portfolio-index-preview-description" data-preview-description></p>
+  </div>
+  <div class="portfolio-index-bottom">
+    <p class="portfolio-index-note">每个方向通向对应的已发布作品；现有示例明确标注为概念占位，后续可替换为你的原创作品。<br /><a href="/showcase">ENTER VISUAL SHOWCASE ↗</a></p>
+    <a class="portfolio-index-exit" href="/work" data-page-transition aria-label="查看全部作品"><span class="portfolio-index-exit-dot" aria-hidden="true"></span><span>VIEW ALL<br />WORK</span><span class="portfolio-index-exit-arrow" aria-hidden="true">↗</span></a>
+  </div>
+</portfolio-index>
+<script>
+  import { designDirections } from '../data/design-directions';
+  class PortfolioIndex extends HTMLElement {
+    private observer?: IntersectionObserver;
+    private clearOnScroll?: () => void;
+    connectedCallback() {
+      const rows = [...this.querySelectorAll<HTMLElement>('.portfolio-index-row')];
+      const frames = [...this.querySelectorAll<HTMLElement>('.portfolio-index-preview-frame')];
+      const description = this.querySelector<HTMLElement>('[data-preview-description]');
+      const fine = matchMedia('(hover: hover) and (pointer: fine)');
+      let selected = -1;
+      const activate = (index: number) => {
+        selected = index;
+        this.classList.toggle('is-engaged', index >= 0);
+        rows.forEach((row, i) => row.classList.toggle('is-active', i === index));
+        frames.forEach((frame, i) => frame.classList.toggle('is-active', i === index));
+        if (description) description.textContent = index >= 0 ? designDirections[index].description : '';
+      };
+      rows.forEach((row, index) => {
+        row.addEventListener('pointermove', event => { if (fine.matches && event.pointerType === 'mouse' && selected !== index) activate(index); }, { passive: true });
+        row.addEventListener('focus', () => activate(index));
+      });
+      this.querySelector('.portfolio-index-exit')?.addEventListener('pointerenter', () => activate(-1));
+      this.querySelector('.portfolio-index-exit')?.addEventListener('focus', () => activate(-1));
+      this.observer = new IntersectionObserver(entries => { if (!entries[0].isIntersecting) activate(-1); });
+      this.observer.observe(this);
+      this.clearOnScroll = () => { if (selected >= 0) activate(-1); };
+      window.addEventListener('scroll', this.clearOnScroll, { passive: true });
+      this.addEventListener('pointerleave', () => { if (fine.matches) activate(-1); });
+      this.addEventListener('focusout', () => queueMicrotask(() => { if (!this.contains(document.activeElement) && !this.matches(':hover')) activate(-1); }));
+      this.addEventListener('keydown', event => { if (event.key === 'Escape') { activate(-1); (document.activeElement as HTMLElement)?.blur(); } });
+    }
+    disconnectedCallback() { this.observer?.disconnect(); if (this.clearOnScroll) window.removeEventListener('scroll', this.clearOnScroll); }
+  }
+  if (!customElements.get('portfolio-index')) customElements.define('portfolio-index', PortfolioIndex);
+</script>

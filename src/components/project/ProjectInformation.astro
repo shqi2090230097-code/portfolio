@@ -1,0 +1,6 @@
+---
+interface Props { client?: string; role?: string[]; year?: number; deliverables?: string[]; tools?: string[]; categories?: string[]; }
+const { client, role, year, deliverables, tools, categories } = Astro.props;
+const fields = [['Client', client], ['Year', year], ['Role', role?.join(' / ')], ['Deliverables', deliverables?.join(' / ')], ['Tools', tools?.join(' / ')], ['Categories', categories?.join(' / ')]].filter(([,value]) => value !== undefined && value !== '');
+---
+<dl class="detail-information">{fields.map(([label, value]) => <div><dt>{label}</dt><dd>{value}</dd></div>)}</dl>

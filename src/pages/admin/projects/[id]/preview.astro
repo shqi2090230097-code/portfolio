@@ -1,0 +1,10 @@
+---
+import ProjectDetailLayout from '../../../../layouts/ProjectDetailLayout.astro';
+import BaseLayout from '../../../../layouts/BaseLayout.astro';
+import { getDatabaseProjects } from '../../../../lib/projects-repository';
+import { databaseProjectToWork } from '../../../../lib/works';
+const [project] = await getDatabaseProjects({ id: Astro.params.id, includeDrafts: true, cookies: Astro.cookies, request: Astro.request });
+if (!project) Astro.response.status = 404;
+const work = project ? databaseProjectToWork(project) : undefined;
+---
+{work ? <><div class="admin-preview-banner">ADMIN PREVIEW · {project.status === 'draft' ? '草稿' : '已发布'}</div><ProjectDetailLayout work={work} /></> : <BaseLayout title="项目不存在"><p>项目不存在、已删除，或当前账号没有访问权限。</p></BaseLayout>}

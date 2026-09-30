@@ -1,0 +1,7 @@
+---
+interface Props { href?: string; label?: string; dark?: boolean; }
+const { href = '/work', label = 'BACK', dark = false } = Astro.props;
+---
+<a class:list={['portfolio-back', { 'portfolio-back--dark': dark }]} href={href} aria-label="返回上一步">
+  <span aria-hidden="true">←</span><span>{label}</span>
+</a>

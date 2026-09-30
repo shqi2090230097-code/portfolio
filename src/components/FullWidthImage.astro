@@ -1,0 +1,7 @@
+---
+import MediaBlock from './MediaBlock.astro';
+import type { ContentMedia } from '../lib/sections';
+import type { Work } from '../lib/works';
+interface Props { work: Work; media: ContentMedia; }
+---
+<div class="full-width-image"><MediaBlock {...Astro.props} /></div>

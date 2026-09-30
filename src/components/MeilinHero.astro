@@ -1,0 +1,67 @@
+---
+import { site } from '../data/site';
+import { workVisual } from '../lib/work-visual';
+import { resolveMedia } from '../lib/media';
+import type { Work } from '../lib/works';
+interface Props { works: Work[]; }
+const { works } = Astro.props;
+const columns = Math.max(3, Math.min(5, Math.ceil(Math.sqrt(works.length))));
+const rows = Math.max(1, Math.ceil(works.length / columns));
+const visuals = await Promise.all(works.map(async (work, index) => ({
+  title: work.data.title,
+  index,
+  x: 15 + (index % columns) * (70 / Math.max(1, columns - 1)) + (Math.floor(index / columns) % 2 ? 3 : -2),
+  y: 18 + Math.floor(index / columns) * (55 / Math.max(1, rows - 1)) + (index % columns) * 6,
+  media: await resolveMedia(work, workVisual(work)),
+})));
+---
+<meilin-hero class="meilin-hero" aria-label="Meilin 作品集介绍">
+  <div class="meilin-hero-grain" aria-hidden="true"></div>
+  <header class="meilin-nav"><a class="meilin-mark" href="/">MEILIN <span>®</span></a><nav aria-label="主导航"><a href="#project-index">WORK <span>↗</span></a><a class="meilin-showcase-entry" href="/showcase">SHOWCASE <span>↗</span></a><a href="/about">ABOUT <span>↗</span></a><a href="#contact">CONTACT <span>↗</span></a></nav></header>
+  <div class="meilin-hero-art" aria-hidden="true">
+    {visuals.map(({ media, title, index, x, y }) => <div class={`meilin-trail meilin-trail--${index % 4}`} data-x={x} data-y={y} style={`--trail-x:${x}%;--trail-y:${y}%;--trail-rotate:${((index % 5) - 2) * 3}deg;--trail-layer:${index + 1}`}>
+      {media.src ? <img src={media.src} alt="" width={media.width} height={media.height} loading="eager" decoding="async" /> : <div class="meilin-trail-placeholder"><span>{String(index + 1).padStart(2, '0')}</span><span>IMAGE<br />PENDING</span></div>}
+      <small>{title}</small>
+    </div>)}
+  </div>
+  <div class="meilin-hero-body"><p class="meilin-hero-index">INDEPENDENT DESIGN PRACTICE<br />SELECTED WORK · 2026</p><div class="meilin-hero-copy"><h1>Meilin<span aria-hidden="true">.</span></h1><p>{site.intro}</p></div></div>
+  <a class="meilin-scroll" href="#project-index"><span>SCROLL TO EXPLORE</span><span aria-hidden="true">↓</span></a>
+</meilin-hero>
+<script>
+  import { wake, stop } from '../lib/motion-loop';
+  class MeilinHero extends HTMLElement {
+    connectedCallback() {
+      const cards = [...this.querySelectorAll<HTMLElement>('.meilin-trail')];
+      const area = this.querySelector<HTMLElement>('.meilin-hero-art');
+      if (!cards.length || !area) return;
+      const fine = matchMedia('(hover:hover) and (pointer:fine)');
+      const reduced = matchMedia('(prefers-reduced-motion:reduce)');
+      if (!fine.matches || reduced.matches) return;
+      let rect = area.getBoundingClientRect();
+      let px = .5, py = .5;
+      const positions = cards.map(card => ({x:Number(card.dataset.x)/100,y:Number(card.dataset.y)/100,dx:0,dy:0,vx:0,vy:0}));
+      const tick = () => {
+        let moving = false;
+        positions.forEach((point,index) => {
+          const depth = .65 + (index % 4) * .22;
+          const distance = Math.hypot((px-point.x)*rect.width,(py-point.y)*rect.height);
+          const force = Math.max(0,1-distance/250) * 42;
+          const angle = Math.atan2(point.y-py,point.x-px);
+          const tx = (px-.5)*75*depth + Math.cos(angle)*force;
+          const ty = (py-.5)*55*depth + Math.sin(angle)*force;
+          point.vx = (point.vx + (tx-point.dx)*(.065 + index%3*.008))*.82;
+          point.vy = (point.vy + (ty-point.dy)*(.065 + index%3*.008))*.82;
+          point.dx += point.vx; point.dy += point.vy;
+          cards[index].style.transform = `translate3d(calc(-50% + ${point.dx.toFixed(2)}px),calc(-50% + ${point.dy.toFixed(2)}px),0) rotate(calc(var(--trail-rotate) + ${(point.dx*.045).toFixed(2)}deg))`;
+          if (Math.abs(tx-point.dx)+Math.abs(ty-point.dy)+Math.abs(point.vx)+Math.abs(point.vy)>.2) moving=true;
+        });
+        return moving;
+      };
+      this.addEventListener('pointermove',event=>{ px=(event.clientX-rect.left)/rect.width;py=(event.clientY-rect.top)/rect.height;wake(tick); },{passive:true});
+      this.addEventListener('pointerleave',()=>{px=.5;py=.5;wake(tick);});
+      window.addEventListener('resize',()=>{rect=area.getBoundingClientRect();},{passive:true});
+      window.addEventListener('pagehide',()=>stop(tick),{once:true});
+    }
+  }
+  if (!customElements.get('meilin-hero')) customElements.define('meilin-hero',MeilinHero);
+</script>

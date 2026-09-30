@@ -1,0 +1,11 @@
+<script>
+  const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+  if(!reduced.matches&&'IntersectionObserver' in window){
+    document.documentElement.classList.add('motion-ready');
+    const titles=document.querySelectorAll('[data-title-reveal]');
+    titles.forEach(el=>el.classList.add('title-pending'));
+    const observer=new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting){entry.target.classList.remove('title-pending');observer.unobserve(entry.target);}}),{threshold:.1});
+    titles.forEach(el=>observer.observe(el));
+    reduced.addEventListener('change',()=>{if(reduced.matches){observer.disconnect();titles.forEach(el=>el.classList.remove('title-pending'));}});
+  }
+</script>

@@ -1,0 +1,10 @@
+---
+import Container from './Container.astro';
+import SectionHeading from './SectionHeading.astro';
+interface Props { id?: string; title?: string; width?: 'page' | 'content' | 'text' | 'full'; spacing?: 'normal' | 'compact' | 'spacious'; }
+const { id, title, width = 'content', spacing = 'normal' } = Astro.props;
+---
+<section id={id} aria-label={title} class:list={['project-section', `section-space--${spacing}`]}>
+  {title && <Container width={width === 'full' ? 'page' : width}><SectionHeading title={title} /></Container>}
+  <Container width={width}><slot /></Container>
+</section>

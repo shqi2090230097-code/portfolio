@@ -1,0 +1,5 @@
+---
+interface Props { paragraphs?: string[]; }
+const { paragraphs = [] } = Astro.props;
+---
+<div class="text-block prose">{paragraphs.map((paragraph) => <p>{paragraph}</p>)}<slot /></div>

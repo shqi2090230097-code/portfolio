@@ -1,0 +1,21 @@
+---
+import type { Work } from '../lib/works';
+import type { ContentMedia } from '../lib/sections';
+import ProjectSection from './ProjectSection.astro';
+import TextBlock from './TextBlock.astro';
+import MediaBlock from './MediaBlock.astro';
+import FullWidthImage from './FullWidthImage.astro';
+import ImageGrid from './ImageGrid.astro';
+import ImagePair from './ImagePair.astro';
+interface Props { work: Work; }
+const { work } = Astro.props;
+---
+{work.data.sections?.map((section) => <ProjectSection id={section.id} title={section.title} width={section.kind === 'text' ? 'text' : section.kind === 'media' ? section.width : 'content'}>
+  {section.kind === 'text' && <TextBlock paragraphs={section.paragraphs} />}
+  {section.kind === 'media' && (section.width === 'full' ? <FullWidthImage work={work} media={section.media} /> : <MediaBlock work={work} media={section.media} />)}
+  {section.kind === 'gallery' && (section.arrangement === 'pair' ? <ImagePair work={work} images={section.images as [ContentMedia, ContentMedia]} /> : <ImageGrid work={work} images={section.images} />)}
+  {section.kind === 'split' && <div class:list={['layout-grid', 'text-media', `text-media--${section.mediaPosition}`]}>
+    <div class="text-media-copy"><TextBlock paragraphs={section.paragraphs} /></div>
+    <div class="text-media-visual"><MediaBlock work={work} media={section.media} /></div>
+  </div>}
+</ProjectSection>)}

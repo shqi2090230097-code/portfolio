@@ -1,0 +1,19 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import ProjectHero from '../components/ProjectHero.astro';
+import ProjectSection from '../components/ProjectSection.astro';
+import ContentSections from '../components/ContentSections.astro';
+import TextBlock from '../components/TextBlock.astro';
+import type { Work } from '../lib/works';
+import PortfolioBack from '../components/PortfolioBack.astro';
+interface Props { work: Work; }
+const { work } = Astro.props;
+---
+<BaseLayout title={work.data.title} description={work.data.summary} wide>
+  <PortfolioBack href="/work" />
+  <article class="project-page">
+    <ProjectHero work={work} />
+    <ContentSections work={work} />
+    {work.body?.trim() && <ProjectSection width="text"><TextBlock><slot /></TextBlock></ProjectSection>}
+  </article>
+</BaseLayout>

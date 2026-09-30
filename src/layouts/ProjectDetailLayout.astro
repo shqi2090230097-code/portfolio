@@ -1,0 +1,32 @@
+---
+import DetailDepth from '../components/DetailDepth.astro';
+import MediaBlock from '../components/MediaBlock.astro';
+import { workVisual } from '../lib/work-visual';
+import BaseLayout from './BaseLayout.astro';
+import ProjectRenderer from '../components/project/ProjectRenderer.astro';
+import { getPublishedWorks, workUrl, type Work } from '../lib/works';
+import '../styles/project-detail.css';
+import PortfolioBack from '../components/PortfolioBack.astro';
+interface Props { work: Work; }
+const { work } = Astro.props;
+const conceptPreview = work.data.tags.includes('Concept Preview');
+const allProjects = await getPublishedWorks('projects');
+const projects = conceptPreview ? allProjects.filter(project => project.data.tags.includes('Concept Preview')) : allProjects;
+const index = projects.findIndex(project => project.id === work.id);
+const previous = projects.length > 1 && index >= 0 ? projects[(index - 1 + projects.length) % projects.length] : undefined;
+const next = projects.length > 1 ? projects[(index + 1) % projects.length] : undefined;
+---
+<BaseLayout title={work.data.title} description={work.data.summary} wide studio>
+  <PortfolioBack href="/work" />
+  <article class:list={['project-detail', { 'project-detail--concept': conceptPreview }]} style={work.data.themeBackground ? `--project-theme:${work.data.themeBackground}` : undefined}>
+    <nav class="detail-navigation" aria-label="项目导航"><span>PROJECT / {work.data.title}</span></nav>
+    <ProjectRenderer work={work} blocks={work.data.blocks ?? []} />
+    {work.body?.trim() && <div class="detail-markdown"><slot /></div>}
+    <nav class="detail-next" aria-label="前后项目">{next ? <div class="detail-next-inner">
+      {previous && <a class="detail-next-previous" href={workUrl(previous)} data-view data-page-transition><span class="detail-label">← Previous project</span><span class="detail-next-side-title">{previous.data.title}</span></a>}
+      <a class="detail-next-forward" href={workUrl(next)} data-view data-page-transition><span class="detail-label">Next project ↗</span><span class="motion-title" data-title-reveal><span class="detail-next-title">{next.data.title}</span></span><div class="detail-next-visual"><MediaBlock work={next} media={workVisual(next)} /></div></a>
+    </div> : <a href="/work">查看全部作品 ↗</a>}</nav>
+  </article>
+</BaseLayout>
+
+<DetailDepth />

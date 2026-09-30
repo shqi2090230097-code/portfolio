@@ -1,0 +1,26 @@
+---
+import { stat } from 'node:fs/promises';
+import { join } from 'node:path';
+import { mediaUrl, workDirectory, type Work } from '../../lib/works';
+import { resolveMedia } from '../../lib/media';
+import type { ProjectBlock } from '../../lib/project-blocks';
+import type { ContentMedia } from '../../lib/sections';
+interface Props { work: Work; block: Extract<ProjectBlock, { type: 'video' }>; }
+const { work, block } = Astro.props;
+const poster = block.poster ? await resolveMedia(work, block.poster) : undefined;
+const reference = block.source.kind === 'placeholder' ? await resolveMedia(work, {
+  placeholder: true, width: block.width, height: block.height,
+  alt: `${work.data.title} — ${block.title} motion reference`,
+} satisfies ContentMedia) : undefined;
+if (block.source.kind === 'local' && !(await stat(join(workDirectory(work), block.source.file)).catch(() => undefined))?.isFile()) throw new Error(`视频不存在：${work.id}/${block.source.file}`);
+---
+<figure class="detail-video">
+  {(block.source.kind === 'local' || block.source.kind === 'external') ? <video controls playsinline preload="metadata" width={block.width} height={block.height} poster={poster?.src} aria-label={block.title}>
+    <source src={block.source.kind === 'local' ? mediaUrl(work, block.source.file) : block.source.url} type={(block.source.kind === 'local' ? block.source.file : block.source.url).includes('.webm') ? 'video/webm' : 'video/mp4'} />
+  </video> : <div class="detail-video-placeholder" style={`aspect-ratio:${block.width}/${block.height}`}>
+    {reference?.src && <img src={reference.src} alt={reference.alt} width={reference.width} height={reference.height} loading="lazy" decoding="async" />}
+    <p class="detail-label">{block.title} / TEMPORARY REFERENCE</p>
+    {reference && 'referenceSource' in reference && <a href={reference.referenceSource} target="_blank" rel="noreferrer">REFERENCE ↗</a>}
+  </div>}
+  {block.caption && <figcaption>{block.caption}</figcaption>}
+</figure>

@@ -1,0 +1,37 @@
+---
+import MotionTitles from '../components/MotionTitles.astro';
+import PageTransition from '../components/PageTransition.astro';
+import '../styles/motion.css';
+import StudioChrome from '../components/StudioChrome.astro';
+import StudioFooter from '../components/StudioFooter.astro';
+import StudioCursor from '../components/StudioCursor.astro';
+import '../styles/studio.css';
+import { site } from '../data/site';
+import { tokenCSS } from '../design/tokens.mjs';
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import Container from '../components/Container.astro';
+import '../styles/global.css';
+interface Props { title: string; description?: string; wide?: boolean; scene?: boolean; studio?: boolean; footer?: boolean; }
+const { title, description = site.description, wide = false, scene = false, studio = false, footer = true } = Astro.props;
+---
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <title>{title} · {site.title}</title>
+    <style is:inline set:html={tokenCSS} />
+    <slot name="head" />
+  </head>
+  <body class:list={{ 'studio-site': studio }}>
+    <a class="skip-link" href="#main">跳到正文</a>
+    {studio ? <StudioChrome /> : !scene && <SiteHeader />}
+    <main id="main" class:list={{ 'page-standard': !wide, 'scene-main': scene }}>
+      {wide ? <slot /> : <Container width="text"><slot /></Container>}
+    </main>
+    {footer && (studio ? <StudioFooter /> : !scene && <SiteFooter />)}
+    <PageTransition /><MotionTitles /><StudioCursor />
+  </body>
+</html>

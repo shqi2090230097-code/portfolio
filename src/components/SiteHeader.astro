@@ -1,0 +1,13 @@
+---
+import Container from './Container.astro';
+import { site } from '../data/site';
+const pathname = Astro.url.pathname.replace(/\/$/, '') || '/';
+---
+<header class="site-header"><Container><div class="header-inner">
+  <a href="/" class="site-title">{site.title}</a>
+  <nav aria-label="主要导航">
+    <a href="/" aria-current={pathname === '/' ? 'page' : undefined}>首页</a>
+    <a href="/work" aria-current={pathname === '/work' ? 'page' : undefined}>全部作品</a>
+    <a href="/about" aria-current={pathname === '/about' ? 'page' : undefined}>关于我</a>
+  </nav>
+</div></Container></header>

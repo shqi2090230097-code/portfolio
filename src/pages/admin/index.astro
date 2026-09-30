@@ -1,0 +1,16 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { hasSupabaseConfig } from '../../lib/supabase/config';
+---
+<AdminLayout title="作品管理">
+  <header class="admin-page-head"><div><h1>作品</h1><p>管理项目、发布状态与展示顺序。</p></div>{hasSupabaseConfig && <button class="admin-primary" type="button" data-new-project>＋ 新建作品</button>}</header>
+  {!hasSupabaseConfig ? <div class="admin-notice"><strong>代码已经就绪，尚未连接 Supabase。</strong><p>填写环境变量并执行 <code>supabase/migrations/001_portfolio_cms.sql</code> 后即可登录使用。</p></div> :
+  <div data-project-list><div class="admin-empty">正在加载作品…</div></div>}
+</AdminLayout>
+<script>
+  import { getSupabaseBrowserClient } from '../../lib/supabase/browser';
+  import '../../lib/admin/project-list';
+  const signout=document.querySelector<HTMLButtonElement>('[data-admin-signout]');
+  const client=getSupabaseBrowserClient();
+  if(signout&&client){signout.hidden=false;signout.addEventListener('click',async()=>{await client.auth.signOut();location.assign('/admin/login');});}
+</script>

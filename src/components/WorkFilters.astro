@@ -1,0 +1,47 @@
+---
+import type { Work } from '../lib/works';
+interface Props { works: Work[]; }
+const { works } = Astro.props;
+const years = [...new Set(works.map((work) => work.data.year))].sort((a, b) => b - a);
+const categories = [...new Set(works.map((work) => work.data.category))].sort();
+---
+<work-filters>
+  <form class="work-filters" hidden aria-label="筛选作品">
+    <label>类型<select name="type"><option value="">全部类型</option><option value="project">Project</option><option value="archive">Archive</option></select></label>
+    <label>年份<select name="year"><option value="">全部年份</option>{years.map((year) => <option value={year}>{year}</option>)}</select></label>
+    <label>分类<select name="category"><option value="">全部分类</option>{categories.map((category) => <option value={category}>{category}</option>)}</select></label>
+    <button type="reset">重置筛选</button>
+  </form>
+</work-filters>
+<script>
+  class WorkFilters extends HTMLElement {
+    connectedCallback() {
+      const form = this.querySelector('form');
+      const main = this.closest('main');
+      if (!form || !main) return;
+      const items = [...main.querySelectorAll<HTMLElement>('[data-work-type]')];
+      const count = main.querySelector('[data-work-count]');
+      const empty = main.querySelector<HTMLElement>('[data-work-empty]');
+      const update = () => {
+        const data = new FormData(form);
+        let visible = 0;
+        for (const item of items) {
+          item.hidden = (['type', 'year', 'category'] as const).some((key) => data.get(key) && data.get(key) !== item.getAttribute(`data-work-${key}`));
+          if (!item.hidden) visible++;
+        }
+        if (count) count.textContent = `显示 ${visible} / ${items.length} 件作品`;
+        if (empty) empty.hidden = visible !== 0;
+      };
+      form.hidden = false;
+      form.addEventListener('change', update);
+      form.addEventListener('submit', (event) => event.preventDefault());
+      form.addEventListener('reset', (event) => {
+        event.preventDefault();
+        form.querySelectorAll('select').forEach((select) => { select.value = ''; });
+        update();
+      });
+      update();
+    }
+  }
+  if (!customElements.get('work-filters')) customElements.define('work-filters', WorkFilters);
+</script>

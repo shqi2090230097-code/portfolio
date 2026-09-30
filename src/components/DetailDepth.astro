@@ -1,0 +1,29 @@
+<script>
+  import { motion } from '../design/motion.mjs';
+  import { breakpoints } from '../design/tokens.mjs';
+  import { wake, stop, damp, clamp01 } from '../lib/motion-loop';
+  const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+  const desktop=matchMedia(`(min-width: ${breakpoints.tablet})`);
+  const entries=[...document.querySelectorAll<HTMLElement>('.project-detail .detail-image')].map(el=>({el,top:0,height:1,current:.5,active:false}));
+  let position=scrollY;
+  const tick=(dt:number)=>{
+    if(reduced.matches||!desktop.matches)return false;
+    let moving=false;
+    for(const entry of entries){
+      if(!entry.active)continue;
+      const target=clamp01((position+innerHeight-entry.top)/(innerHeight+entry.height));
+      entry.current=damp(entry.current,target,motion.scrollSmoothing,dt);
+      entry.el.style.setProperty('--image-progress',String(entry.current));
+      moving ||= Math.abs(entry.current-target)>.0001;
+    }
+    return moving;
+  };
+  const schedule=()=>{position=scrollY;wake(tick);};
+  const measure=()=>{entries.forEach(entry=>{const r=entry.el.getBoundingClientRect();entry.top=r.top+scrollY;entry.height=r.height;});schedule();};
+  const observer=new IntersectionObserver(changes=>{changes.forEach(change=>{const entry=entries.find(e=>e.el===change.target);if(entry)entry.active=change.isIntersecting;});schedule();});
+  entries.forEach(entry=>observer.observe(entry.el));
+  window.addEventListener('scroll',schedule,{passive:true});
+  window.addEventListener('resize',measure,{passive:true});
+  reduced.addEventListener('change',()=>{stop(tick);entries.forEach(e=>e.el.style.removeProperty('--image-progress'));schedule();});
+  document.fonts.ready.then(measure);measure();
+</script>

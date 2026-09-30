@@ -1,0 +1,42 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { site } from '../data/site';
+import '../styles/about.css';
+const about = site.aboutPage;
+---
+<BaseLayout title="About" description={about.introduction} wide studio footer={false}>
+  <article class="about-page">
+    <section class="about-hero" aria-labelledby="about-title">
+      <div class="about-overline"><span>{about.label}</span><span>ABOUT / 2026</span></div>
+      <h1 id="about-title" class="motion-title" data-title-reveal><span>ABOUT<span class="about-title-dot" aria-hidden="true">.</span></span></h1>
+      <div class="about-hero-bottom"><p class="about-index">01 / INTRODUCTION</p><div><p class="about-lead">{about.lead}</p><p class="about-introduction">{about.introduction}</p></div></div>
+    </section>
+
+    <section class="about-statement" aria-labelledby="about-statement-title">
+      <p class="about-section-label">A POINT OF VIEW / 02</p>
+      <h2 id="about-statement-title" class="motion-title" data-title-reveal><span>{about.statement}</span></h2>
+      <p class="about-statement-caption">MEILIN — INDEPENDENT VISUAL PRACTICE</p>
+    </section>
+
+    <section class="about-focus" aria-labelledby="about-focus-title">
+      <div class="about-section-intro"><p class="about-section-label">{about.focusLabel}</p><h2 id="about-focus-title" class="motion-title" data-title-reveal><span>Areas of focus<span class="about-lime">.</span></span></h2></div>
+      <ol class="about-focus-list">{about.focus.map((item, index) => <li class="about-reveal"><span class="about-focus-number">{String(index + 1).padStart(2, '0')}</span><h3>{item.name}</h3><p>{item.detail}</p></li>)}</ol>
+    </section>
+
+    <section class="about-approach" aria-labelledby="about-approach-title"><p class="about-section-label">{about.approachLabel}</p><div class="about-approach-copy about-reveal"><h2 id="about-approach-title">Thoughtful by design.</h2>{about.approach.map(paragraph => <p>{paragraph}</p>)}</div></section>
+
+    <section class="about-contact" id="contact" aria-labelledby="about-contact-title"><p class="about-section-label">{about.contactLabel}</p><h2 id="about-contact-title" class="motion-title" data-title-reveal><span>{about.contactHeading.split('\n').map(line => <span class="about-contact-line">{line}</span>)}</span></h2><div class="about-contact-bottom">{about.contactEmail ? <a href={`mailto:${about.contactEmail}`}>EMAIL ME ↗</a> : <p>{about.contactNote}</p>}<a href="/work" data-page-transition>VIEW WORK ↗</a></div></section>
+    <footer class="about-colophon"><span>MEILIN © 2026</span><a href="/">BACK TO HOME ↗</a></footer>
+  </article>
+</BaseLayout>
+<script>
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  if (!reduced.matches && 'IntersectionObserver' in window) {
+    const items = [...document.querySelectorAll<HTMLElement>('.about-reveal')];
+    const observer = new IntersectionObserver(entries => entries.forEach(entry => {
+      if (entry.isIntersecting) { entry.target.classList.add('is-revealed'); observer.unobserve(entry.target); }
+    }), { threshold: .08 });
+    items.forEach(item => { if (item.getBoundingClientRect().top > innerHeight) item.classList.add('is-pending'); observer.observe(item); });
+    reduced.addEventListener('change', () => { if (reduced.matches) { observer.disconnect(); items.forEach(item => item.classList.add('is-revealed')); } });
+  }
+</script>

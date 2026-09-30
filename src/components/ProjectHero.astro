@@ -1,0 +1,14 @@
+---
+import Container from './Container.astro';
+import ProjectMeta from './ProjectMeta.astro';
+import MediaBlock from './MediaBlock.astro';
+import type { Work } from '../lib/works';
+interface Props { work: Work; }
+const { work } = Astro.props;
+---
+<Container><div class="project-hero">
+  <p><a href="/work">← 全部作品</a></p>
+  <div class="layout-grid"><div class="hero-copy"><h1>{work.data.title}</h1><p class="lead">{work.data.summary}</p><slot /></div></div>
+  <ProjectMeta work={work} />
+  {work.data.cover && <MediaBlock work={work} media={work.data.cover} priority />}
+</div></Container>

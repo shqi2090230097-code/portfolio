@@ -1,0 +1,7 @@
+---
+// 保留兼容入口；新页面优先直接使用 WorkGrid。
+import WorkGrid from './WorkGrid.astro';
+import type { Work } from '../lib/works';
+interface Props { works: Work[]; }
+---
+<WorkGrid {...Astro.props} />

@@ -1,0 +1,14 @@
+---
+import { resolveMedia } from '../lib/media';
+import type { ContentMedia } from '../lib/sections';
+import type { Work } from '../lib/works';
+interface Props { work: Work; media: ContentMedia; priority?: boolean; }
+const { work, media, priority = false } = Astro.props;
+const resolved = await resolveMedia(work, media);
+---
+<figure class="media-block">
+  {resolved.src ? <img src={resolved.src} alt={resolved.alt} width={resolved.width} height={resolved.height} loading={priority ? 'eager' : 'lazy'} decoding="async" fetchpriority={priority ? 'high' : undefined} /> :
+    <div class="media-placeholder" role="img" aria-label={resolved.alt} style={`aspect-ratio:${resolved.width}/${resolved.height}`}><span>{resolved.alt}<br />{resolved.width} × {resolved.height}</span></div>}
+  {resolved.caption && <figcaption>{resolved.caption}</figcaption>}
+  {'temporaryReference' in resolved && resolved.temporaryReference && <a class="media-reference-source" href={resolved.referenceSource} target="_blank" rel="noreferrer" aria-label={`临时视觉参考来源：${resolved.referenceSearch}`}>REFERENCE ↗</a>}
+</figure>

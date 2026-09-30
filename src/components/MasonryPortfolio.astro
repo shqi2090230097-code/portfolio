@@ -1,0 +1,72 @@
+---
+import type { Work } from '../lib/works';
+import { workUrl } from '../lib/works';
+import { workVisual } from '../lib/work-visual';
+import { resolveMedia } from '../lib/media';
+interface Props { works: Work[]; heading?: string; id?: string; }
+const { works, heading = 'Selected work', id = 'selected-work' } = Astro.props;
+const entries = await Promise.all(works.map(async (work, index) => ({work,index,media:await resolveMedia(work,workVisual(work))})));
+---
+<section class="meilin-work" id={id} aria-label={heading}>
+  <div class="meilin-work-head"><div><span class="meilin-overline">PORTFOLIO / 2026</span><h2>{heading}<span aria-hidden="true">.</span></h2></div><p>{String(works.length).padStart(2,'0')} PROJECTS <span aria-hidden="true">↘</span></p></div>
+  {works.length ? <div class="meilin-masonry">{entries.map(({work,index,media}) => <article class="meilin-piece" data-work-type={work.data.type} data-work-year={work.data.year} data-work-category={work.data.category}>
+      <button type="button" class={`meilin-piece-image meilin-piece-image--${index%4}`} style={`--meilin-ratio:${media.width}/${media.height}`} aria-label={`互动预览 ${work.data.title}，下方标题可打开详情`}>
+        <div class="meilin-piece-visual">{media.src ? <img src={media.src} alt={media.alt} width={media.width} height={media.height} loading={index<2?'eager':'lazy'} decoding="async" /> : <div class="meilin-image-placeholder" role="img" aria-label={media.alt}><span>{String(index+1).padStart(2,'0')} / {work.data.type.toUpperCase()}</span><strong>IMAGE<br />PENDING</strong><span>{work.data.year}</span></div>}</div>
+      </button>
+      <a class="meilin-piece-info" href={workUrl(work)} aria-label={`查看 ${work.data.title} 详情`}><div><h3>{work.data.title}</h3><p>{work.data.category}</p></div><span aria-hidden="true">↗</span></a>
+  </article>)}</div> : <p class="meilin-work-empty">暂时没有已发布的作品。</p>}
+</section>
+<script>
+  import { wake, stop } from '../lib/motion-loop';
+  const fine = matchMedia('(hover: hover) and (pointer: fine)');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  document.querySelectorAll<HTMLElement>('.meilin-piece').forEach(piece => {
+    const image = piece.querySelector<HTMLElement>('.meilin-piece-image');
+    const visual = piece.querySelector<HTMLElement>('.meilin-piece-visual');
+    if (!image || !visual) return;
+    let bounds: DOMRect | undefined;
+    let x = 0, y = 0, vx = 0, vy = 0, targetX = 0, targetY = 0;
+    let pushTimer: number | undefined;
+    const render = () => {
+      vx = (vx + (targetX - x) * .065) * .82;
+      vy = (vy + (targetY - y) * .065) * .82;
+      x = Math.max(-85,Math.min(85,x + vx)); y = Math.max(-80,Math.min(80,y + vy));
+      visual.style.transform = `translate3d(${x.toFixed(2)}px,${y.toFixed(2)}px,0) rotateX(${(-y * .24).toFixed(2)}deg) rotateY(${(x * .24).toFixed(2)}deg)`;
+      return Math.abs(x-targetX)+Math.abs(y-targetY)+Math.abs(vx)+Math.abs(vy) > .08;
+    };
+    const point = (event: PointerEvent | MouseEvent) => {
+      if (!bounds) bounds = image.getBoundingClientRect();
+      const px = (event.clientX - bounds.left) / bounds.width - .5;
+      const py = (event.clientY - bounds.top) / bounds.height - .5;
+      return { px: Math.max(-.5,Math.min(.5,px)), py: Math.max(-.5,Math.min(.5,py)) };
+    };
+    image.addEventListener('pointerenter', event => {
+      if (!fine.matches || reduced.matches || event.pointerType !== 'mouse') return;
+      bounds = image.getBoundingClientRect();
+      piece.classList.add('is-pointer-active');
+    });
+    image.addEventListener('pointermove', event => {
+      if (!fine.matches || reduced.matches || event.pointerType !== 'mouse') return;
+      const {px,py} = point(event);
+      targetX = px * 62; targetY = py * 52;
+      wake(render);
+    }, {passive:true});
+    image.addEventListener('click', event => {
+      if (reduced.matches) return;
+      const {px,py} = point(event);
+      vx = Math.max(-34,Math.min(34,vx + px * 52));
+      vy = Math.max(-38,Math.min(38,vy + py * 42 - 23));
+      targetX = px * 70; targetY = py * 56 - 13;
+      piece.classList.add('is-pushed');
+      wake(render);
+      if (pushTimer) clearTimeout(pushTimer);
+      pushTimer = window.setTimeout(() => { piece.classList.remove('is-pushed'); targetX = 0; targetY = 0; wake(render); }, 420);
+    });
+    image.addEventListener('pointerleave', () => {
+      bounds = undefined;
+      piece.classList.remove('is-pointer-active');
+      if (!piece.classList.contains('is-pushed')) { targetX = 0; targetY = 0; wake(render); }
+    });
+    window.addEventListener('pagehide', () => stop(render), {once:true});
+  });
+</script>

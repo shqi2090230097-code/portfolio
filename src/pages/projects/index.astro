@@ -1,0 +1,5 @@
+---
+// `/work` remains the canonical visual project browser. Keep this compatibility
+// route so database-backed projects also have a predictable collection URL.
+return Astro.redirect('/work', 308);
+---

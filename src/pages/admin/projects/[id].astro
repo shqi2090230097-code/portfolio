@@ -1,0 +1,25 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { hasSupabaseConfig } from '../../../lib/supabase/config';
+const id=Astro.params.id ?? '';
+---
+<AdminLayout title="编辑作品">
+  {!hasSupabaseConfig ? <div class="admin-notice">请先配置 Supabase 环境变量。</div> : <admin-project-editor data-project-id={id}>
+    <header class="admin-page-head"><div><a href="/admin">← 作品列表</a><h1 data-project-heading>正在加载…</h1></div><div class="admin-savebar"><span class="admin-save-state" data-save-state>尚未修改</span><a class="admin-secondary" href={`/admin/projects/${id}/preview`} target="_blank">预览 ↗</a><button class="admin-primary" type="button" data-save>保存</button></div></header>
+    <div data-editor-error class="admin-notice admin-error" hidden></div>
+    <div class="admin-editor-layout" data-editor hidden>
+      <section><div class="admin-panel"><h2>内容模块</h2><p class="admin-muted">拖动模块调整前台顺序。Hero 自动使用右侧基础信息与封面。</p><div class="admin-add-grid" data-add-block></div></div><div class="admin-block-list" data-block-list></div></section>
+      <aside class="admin-editor-sidebar"><form class="admin-panel" data-project-form><h2>基础信息</h2>
+        <div class="admin-field"><label>中文标题</label><input name="title" required /></div><div class="admin-field"><label>副标题</label><input name="subtitle" /></div>
+        <div class="admin-field"><label>Slug</label><input name="slug" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" required /><small class="admin-muted" data-slug-status></small></div>
+        <div class="admin-grid-2"><div class="admin-field"><label>分类</label><input name="category" required /></div><div class="admin-field"><label>年份</label><input name="year" type="number" min="1900" max="9999" required /></div></div>
+        <div class="admin-grid-2"><div class="admin-field"><label>客户 / 品牌</label><input name="client" /></div><div class="admin-field"><label>我的角色</label><input name="role" /></div></div>
+        <div class="admin-field"><label>项目周期</label><input name="duration" /></div><div class="admin-field"><label>项目简介</label><textarea name="summary" required></textarea></div><div class="admin-field"><label>项目介绍</label><textarea name="description"></textarea></div>
+        <label class="admin-checkbox"><input name="featured" type="checkbox" /> 首页重点展示</label><div class="admin-grid-2"><div class="admin-field"><label>状态</label><select name="status"><option value="draft">草稿</option><option value="published">已发布</option></select></div><div class="admin-field"><label>主题背景（可选）</label><input name="theme_background" placeholder="#F0F1FA" /></div></div>
+        <div class="admin-field"><label>封面</label><img class="admin-media-preview" data-cover-preview alt="封面预览" hidden/><div class="admin-upload"><input data-cover-upload type="file" accept="image/*"/><progress data-cover-progress hidden></progress><button class="admin-secondary" data-remove-cover type="button">移除引用</button></div><label>替代文字</label><input name="cover_alt" /></div>
+      </form></aside>
+    </div>
+  </admin-project-editor>}
+</AdminLayout>
+<script>import '../../../lib/admin/project-editor';</script>
+

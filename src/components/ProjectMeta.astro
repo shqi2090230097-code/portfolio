@@ -1,0 +1,11 @@
+---
+import type { Work } from '../lib/works';
+interface Props { work: Work; }
+const { data } = Astro.props.work;
+---
+<dl class="project-meta">
+  <div><dt>日期 / 年份</dt><dd><time datetime={data.date}>{data.date}</time> / {data.year}</dd></div>
+  <div><dt>类型</dt><dd>{data.type === 'project' ? 'Project · 完整项目' : 'Archive · 作品归档'}</dd></div>
+  <div><dt>分类</dt><dd>{data.category}</dd></div>
+  <div><dt>标签</dt><dd>{data.tags.length ? data.tags.join('、') : '—'}</dd></div>
+</dl>

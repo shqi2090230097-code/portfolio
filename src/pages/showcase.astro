@@ -1,0 +1,15 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ShowcaseCarousel from '../components/ShowcaseCarousel.astro';
+import { getPublishedWorks } from '../lib/works';
+import '../styles/showcase.css';
+import PortfolioBack from '../components/PortfolioBack.astro';
+const works=await getPublishedWorks();
+---
+<BaseLayout title="Showcase" description="Meilin 的视觉作品动态展示。" wide studio footer={false}>
+  <PortfolioBack href="/" dark />
+  <div class="showcase-page">
+    <ShowcaseCarousel works={works} />
+    <footer class="showcase-end"><span>{String(works.length).padStart(2,'0')} WORKS / {String(Math.max(18,works.length)).padStart(2,'0')} SLOTS</span><a href="/design-index">DESIGN INDEX ↗</a><a href="/">HOME ↗</a></footer>
+  </div>
+</BaseLayout>

@@ -1,0 +1,17 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { hasSupabaseConfig } from '../../lib/supabase/config';
+---
+<AdminLayout title="登录">
+  <section class="admin-auth"><p class="admin-kicker">PRIVATE CMS</p><h1>登录作品后台</h1>
+    {!hasSupabaseConfig ? <div class="admin-notice"><strong>Supabase 尚未配置</strong><p>复制 <code>.env.example</code> 为 <code>.env</code>，填写项目 URL 与 anon key 后重启开发服务器。</p></div> :
+    <form data-login-form><label>邮箱<input name="email" type="email" autocomplete="email" required /></label><label>密码<input name="password" type="password" autocomplete="current-password" required /></label><button class="admin-primary" type="submit">登录</button><p data-login-status role="status"></p></form>}
+  </section>
+</AdminLayout>
+<script>
+  import { getSupabaseBrowserClient } from '../../lib/supabase/browser';
+  const form=document.querySelector<HTMLFormElement>('[data-login-form]');
+  const status=document.querySelector<HTMLElement>('[data-login-status]');
+  form?.addEventListener('submit',async event=>{event.preventDefault();const client=getSupabaseBrowserClient();if(!client||!status)return;status.textContent='登录中…';const values=new FormData(form);const {error}=await client.auth.signInWithPassword({email:String(values.get('email')),password:String(values.get('password'))});if(error){status.textContent=`登录失败：${error.message}`;return;}const next=new URLSearchParams(location.search).get('next')??'/admin';location.assign(next.startsWith('/admin')?next:'/admin');});
+</script>
+

@@ -1,0 +1,24 @@
+<div class="page-transition" aria-hidden="true"><span>PORTFOLIO <i></i></span></div>
+<script>
+  import { motion } from '../design/motion.mjs';
+  const layer=document.querySelector<HTMLElement>('.page-transition');
+  const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+  const key='portfolio-transition';
+  let busy=false;
+  const clear=()=> {busy=false;layer?.getAnimations().forEach(a=>a.cancel());layer?.classList.remove('is-covering');};
+  window.addEventListener('pageshow', event=> {if(event.persisted)clear();});
+  if(layer) {
+    let arriving=false;
+    try {const saved=JSON.parse(sessionStorage.getItem(key)??'null');arriving=saved?.path===location.pathname&&Date.now()-saved.time<10000;sessionStorage.removeItem(key);}catch{}
+    if(arriving&&!reduced.matches) layer.animate([{transform:'translate3d(0,0,0)'},{transform:'translate3d(0,-100%,0)'}],{duration:motion.page*.6,easing:motion.soft});
+    document.addEventListener('click', async event=> {
+      const link=(event.target as Element).closest<HTMLAnchorElement>('a[data-page-transition]');
+      if(!link||event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||link.target||link.hasAttribute('download')||reduced.matches)return;
+      const url=new URL(link.href);if(url.origin!==location.origin||url.pathname===location.pathname)return;
+      event.preventDefault();if(busy)return;busy=true;layer.classList.add('is-covering');
+      try {await layer.animate([{transform:'translate3d(0,100%,0)'},{transform:'translate3d(0,0,0)'}],{duration:motion.page*.4,easing:motion.weighted,fill:'forwards'}).finished;}catch{}
+      try {sessionStorage.setItem(key,JSON.stringify({path:url.pathname,time:Date.now()}));}catch{}
+      location.assign(url.href);
+    });
+  }
+</script>

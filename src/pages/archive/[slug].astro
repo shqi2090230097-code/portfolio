@@ -1,0 +1,15 @@
+---
+import { render } from 'astro:content';
+import type { GetStaticPaths, InferGetStaticPropsType } from 'astro';
+import WorkLayout from '../../layouts/WorkLayout.astro';
+import { getPublishedWorks, type LocalWork } from '../../lib/works';
+export const prerender = true;
+export const getStaticPaths = (async () => {
+  const works = (await getPublishedWorks('archive')).filter((work): work is LocalWork => !('source' in work));
+  return works.map((work) => ({ params: { slug: work.id }, props: { work } }));
+}) satisfies GetStaticPaths;
+type Props = InferGetStaticPropsType<typeof getStaticPaths>;
+const { work } = Astro.props;
+const { Content } = await render(work);
+---
+<WorkLayout work={work}><Content /></WorkLayout>

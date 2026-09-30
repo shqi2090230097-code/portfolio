@@ -1,0 +1,44 @@
+---
+import type { Work } from '../../lib/works';
+import type { ProjectBlock } from '../../lib/project-blocks';
+import { workVisual } from '../../lib/work-visual';
+import ProjectImage from './ProjectImage.astro';
+import ProjectCopy from './ProjectCopy.astro';
+import ProjectInformation from './ProjectInformation.astro';
+import ProjectVideo from './ProjectVideo.astro';
+interface Props { work: Work; blocks: ProjectBlock[]; }
+const { work, blocks } = Astro.props;
+---
+<div class="detail-blocks">
+{blocks.map(block => <section id={block.id} data-block={block.type} class:list={['detail-block', `detail-block--${block.type}`, 'alignment' in block && `detail-align--${block.alignment}`, 'size' in block && `detail-space--${block.size}`]}>
+  {block.type === 'hero' && <>
+    <div class="detail-hero-stage">
+      <ProjectImage work={work} image={block.cover ?? { media: workVisual(work), fit: 'contain' }} priority />
+      <div class="detail-hero-copy"><p class="detail-label">{block.categories.length ? block.categories.join(' / ') : work.data.category} / {block.year ?? work.data.year}</p>
+        <h1 class="motion-title" data-title-reveal><span>{block.title ?? work.data.title}</span></h1>
+      </div>
+    </div>
+    <div class="detail-hero-bottom"><ProjectInformation year={block.year ?? work.data.year} role={block.role} tools={block.tools} /><p class="detail-subtitle">{block.subtitle ?? work.data.summary}</p></div>
+  </>}
+  {block.type === 'intro' && <div class="detail-intro"><p class="detail-label">{block.label}</p><ProjectCopy heading={block.heading} body={block.description} /></div>}
+  {(block.type === 'fullImage' || block.type === 'wideImage' || block.type === 'portraitImage') && <div data-reveal><ProjectImage work={work} image={block.image} /></div>}
+  {(block.type === 'imageGrid' || block.type === 'gallery') && <div class:list={['detail-grid', `detail-grid--${block.columns}`, `detail-grid--${block.layout}`]}>{block.images.map(image => <div data-reveal><ProjectImage work={work} image={image} /></div>)}</div>}
+  {block.type === 'imageText' && <div class:list={['detail-split', `detail-split--${block.imagePosition}`]}><div class="detail-split-image" data-reveal><ProjectImage work={work} image={block.image} /></div><ProjectCopy eyebrow={block.eyebrow} heading={block.heading} body={block.body} /></div>}
+  {block.type === 'text' && <ProjectCopy eyebrow={block.eyebrow} heading={block.heading} body={block.body} />}
+  {block.type === 'statement' && <><p class="detail-label">{block.label}</p><p class="detail-statement" data-reveal>{block.text}</p></>}
+  {block.type === 'video' && <ProjectVideo work={work} block={block} />}
+  {block.type === 'projectMeta' && <><h2>{block.heading}</h2><ProjectInformation {...block} year={block.year ?? work.data.year} /></>}
+</section>)}
+</div>
+<script>
+  // Progressive enhancement: content remains visible without JS or IntersectionObserver.
+  const motion = matchMedia('(prefers-reduced-motion: reduce)');
+  if (!motion.matches && 'IntersectionObserver' in window) {
+    const elements = document.querySelectorAll<HTMLElement>('.project-detail [data-reveal]');
+    const observer = new IntersectionObserver(entries => entries.forEach(entry => {
+      if (entry.isIntersecting) { entry.target.classList.remove('reveal-pending'); observer.unobserve(entry.target); }
+    }), { threshold: 0 });
+    elements.forEach(element => { if (element.getBoundingClientRect().top > innerHeight) { element.classList.add('reveal-pending'); observer.observe(element); } });
+    motion.addEventListener('change', () => { if (motion.matches) { observer.disconnect(); elements.forEach(element => element.classList.remove('reveal-pending')); } });
+  }
+</script>

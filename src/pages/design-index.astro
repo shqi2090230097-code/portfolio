@@ -1,0 +1,17 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PortfolioIndex from '../components/PortfolioIndex.astro';
+import { getPublishedWorks } from '../lib/works';
+import '../styles/meilin.css';
+import '../styles/design-index.css';
+const works = await getPublishedWorks();
+---
+<BaseLayout title="Design Index" description="Meilin 的六个视觉设计创作方向：品牌语言、视觉叙事、插画世界、视觉实验、形式与色彩、个人创作。" wide studio>
+  <div class="design-index-page">
+    <header class="design-index-intro">
+      <div class="design-index-top"><span>MEILIN / DESIGN PRACTICE</span><span>06 EXPLORATIONS</span></div>
+      <div class="design-index-title-wrap"><h1><span class="motion-title" data-title-reveal><span>SELECTED</span></span><span class="motion-title" data-title-reveal><span>WORKS<span class="design-index-period">.</span></span></span></h1><p>精选作品 · 六个创作方向</p></div>
+    </header>
+    <PortfolioIndex works={works} />
+  </div>
+</BaseLayout>

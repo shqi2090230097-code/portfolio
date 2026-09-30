@@ -1,0 +1,24 @@
+<header class="studio-header"><a href="/" class="studio-mark">MEILIN <span>®</span></a><nav aria-label="站点导航"><a href="/work">WORK</a><a href="/about">ABOUT</a><a href="#contact">CONTACT</a></nav></header>
+<script>
+  import { motion } from '../design/motion.mjs';
+  const menu=document.querySelector<HTMLDetailsElement>('.studio-header details');
+  const summary=menu?.querySelector('summary');
+  const panel=menu?.querySelector<HTMLElement>('.studio-menu');
+  if(menu&&summary&&panel){
+    let desired=menu.open, animation:Animation|undefined;
+    const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+    const setOpen=async(value:boolean,restoreFocus=false)=>{
+      desired=value;animation?.cancel();summary.setAttribute('aria-expanded',String(value));
+      if(value)menu.open=true;
+      const from=getComputedStyle(panel);const opacity=from.opacity,transform=from.transform;
+      animation=panel.animate(value?[{opacity:0,transform:'translateY(-8px) scale(.98)',clipPath:'inset(0 0 100% 0 round 14px)'},{opacity:1,transform:'none',clipPath:'inset(0 0 0 0 round 14px)'}]:[{opacity,transform},{opacity:0,transform:'translateY(-8px) scale(.98)',clipPath:'inset(0 0 100% 0 round 14px)'}],{duration:reduced.matches?0:motion.medium,easing:motion.soft});
+      if(value&&!reduced.matches)panel.querySelectorAll('a').forEach((link,i)=>link.animate([{opacity:0,transform:'translateY(5px)'},{opacity:1,transform:'none'}],{duration:motion.fast,delay:i*motion.menuStagger,fill:'backwards',easing:motion.soft}));
+      try{await animation.finished;if(!desired){menu.open=false;if(restoreFocus)summary.focus({preventScroll:true});}}catch{}
+    };
+    summary.setAttribute('aria-expanded',String(menu.open));summary.setAttribute('aria-controls','studio-menu');panel.id='studio-menu';
+    summary.addEventListener('click',event=>{event.preventDefault();void setOpen(!desired);});
+    document.addEventListener('pointerdown',event=>{if(desired&&!menu.contains(event.target as Node))void setOpen(false);});
+    document.addEventListener('keydown',event=>{if(event.key==='Escape'&&desired){event.preventDefault();void setOpen(false,true);}});
+    menu.addEventListener('focusout',()=>queueMicrotask(()=>{if(desired&&!menu.contains(document.activeElement))void setOpen(false);}));
+  }
+</script>

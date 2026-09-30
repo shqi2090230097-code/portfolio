@@ -1,0 +1,94 @@
+---
+import type { Work } from '../lib/works';
+import { workUrl } from '../lib/works';
+import { workVisual } from '../lib/work-visual';
+import { resolveMedia } from '../lib/media';
+import MediaBlock from './MediaBlock.astro';
+interface Props { works: Work[]; }
+const { works } = Astro.props;
+const entries = await Promise.all(works.map(async work => ({work, media: workVisual(work), resolved: await resolveMedia(work, workVisual(work))})));
+---
+<project-sequence>
+  <div class="sequence-sticky"><ol class="project-sequence">
+    {entries.map(({work, media, resolved}, index) => <li class="sequence-item" data-theme={work.data.themeBackground ?? '#F0F1FA'} data-work-type={work.data.type} data-work-year={work.data.year} data-work-category={work.data.category}>
+      <article>
+        <a class="sequence-visual" data-view href={workUrl(work)} aria-label={`查看 ${work.data.title}`} style={`--media-ratio:${resolved.width / resolved.height}`}>
+          <div class="sequence-mask"><MediaBlock work={work} media={media} priority={index === 0} /></div>
+          
+        </a>
+        <div class="sequence-info"><p class="sequence-meta"><span>{String(index + 1).padStart(2, '0')}</span><span>{work.data.type} / {work.data.category} / {work.data.year}</span></p>
+          <h2><a href={workUrl(work)} data-view>{work.data.title}<span aria-hidden="true"> ↗</span></a></h2>
+        </div>
+      </article>
+    </li>)}
+  </ol></div>
+  {works.length === 0 && <p>暂时没有已发布的作品。</p>}
+</project-sequence>
+<script>
+  import { breakpoints } from '../design/tokens.mjs';
+  import { motion } from '../design/motion.mjs';
+  import { wake, stop, damp } from '../lib/motion-loop';
+  class ProjectSequence extends HTMLElement {
+    connectedCallback() {
+      const track = this.querySelector<HTMLElement>('.project-sequence');
+      const items = [...this.querySelectorAll<HTMLElement>('.sequence-item')];
+      if (!track) return;
+      const desktop = matchMedia(`(min-width: ${breakpoints.tablet}) and (prefers-reduced-motion: no-preference)`);
+      const controller = new AbortController(); const { signal } = controller;
+      let horizontal = false;
+      let travel = 0, span = 1, lastTheme = '', top = 0, current = 0, target = 0;
+      let geometry: {item:HTMLElement;left:number;top:number;width:number;height:number}[] = [];
+      const clamp = (n: number) => Math.max(0, Math.min(1,n));
+      const measure = () => {
+        horizontal = desktop.matches && items.filter(item => !item.hidden).length > 1;
+        this.classList.toggle('is-horizontal', horizontal);
+        this.classList.toggle('is-mobile-motion', !desktop.matches && !matchMedia('(prefers-reduced-motion: reduce)').matches);
+        // Measure only on resize/filter changes, never every scroll frame.
+        travel = horizontal ? Math.max(0, track.scrollWidth - document.documentElement.clientWidth) : 0;
+        this.style.setProperty('--track-distance', `${travel}px`);
+        span = Math.max(1, this.offsetHeight - innerHeight);
+        top = this.getBoundingClientRect().top + scrollY;
+        geometry = items.filter(item => !item.hidden).map(item => { const r=item.getBoundingClientRect();return {item,left:item.offsetLeft,top:r.top+scrollY,width:r.width,height:r.height}; });
+        schedule();
+      };
+      const update = (dt:number) => {
+        current = damp(current,target,motion.scrollSmoothing,dt);
+        track.style.transform = horizontal ? `translate3d(${-current * travel}px,0,0)` : '';
+        let closest: HTMLElement | undefined, distance = Infinity;
+        geometry.forEach(({item,left,top:position,width,height}) => {
+          const x=left-current*travel;
+          const center = horizontal ? x+width/2 : position-scrollY+height/2;
+          const viewport = horizontal ? innerWidth : innerHeight;
+          const d = Math.abs(center - viewport/2);
+          if (d < distance) { distance = d; closest = item; }
+          item.style.setProperty('--reveal', String(horizontal ? clamp((innerWidth-x)/(innerWidth*.55)) : 1));
+          item.style.setProperty('--depth', String(horizontal ? clamp(d/innerWidth) : 0));
+        });
+        items.forEach(item => item.classList.toggle('is-active', item === closest));
+        const theme = closest?.dataset.theme ?? '#F0F1FA';
+        if(theme!==lastTheme){document.body.style.setProperty('--active-theme',theme);lastTheme=theme;}
+        return Math.abs(current-target)>.00001;
+      };
+      const schedule = () => {target=horizontal?clamp((scrollY-top)/span):0;wake(update);};
+      window.addEventListener('scroll', schedule, { passive:true, signal });
+      window.addEventListener('resize', measure, { passive:true, signal });
+      desktop.addEventListener('change', measure, { signal });
+      const changes = new MutationObserver(measure);
+      items.forEach(item => changes.observe(item, { attributes:true, attributeFilter:['hidden'] }));
+      // Keyboard navigation reveals an offscreen project without trapping focus.
+      this.addEventListener('focusin', event => {
+        if (!horizontal || !travel || !(event.target instanceof HTMLElement) || !event.target.matches(':focus-visible')) return;
+        const item = (event.target as Element).closest<HTMLElement>('.sequence-item');
+        if (!item) return;
+        const p = clamp((item.offsetLeft - innerWidth * .2) / travel);
+        window.scrollTo({ top: scrollY + this.getBoundingClientRect().top + p * span, behavior:'instant' });
+      }, { signal });
+      const appear = new IntersectionObserver(entries => entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('has-entered'); }), { threshold:.1 });
+      items.forEach(item => appear.observe(item));
+      measure();
+      this.addEventListener('sequence-disconnect', () => { controller.abort(); changes.disconnect(); appear.disconnect(); stop(update); document.body.style.removeProperty('--active-theme'); }, { once:true });
+    }
+    disconnectedCallback() { this.dispatchEvent(new Event('sequence-disconnect')); }
+  }
+  if (!customElements.get('project-sequence')) customElements.define('project-sequence', ProjectSequence);
+</script>

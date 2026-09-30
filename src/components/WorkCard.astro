@@ -1,0 +1,18 @@
+---
+import type { Work } from '../lib/works';
+import { workUrl } from '../lib/works';
+import MediaBlock from './MediaBlock.astro';
+import { workVisual } from '../lib/work-visual';
+interface Props { work: Work; }
+const { work } = Astro.props;
+---
+<article class="work-card">
+  <a href={workUrl(work)} class="work-card-link">
+    <div class="work-card-cover">
+      <MediaBlock work={work} media={workVisual(work)} />
+    </div>
+    <h3>{work.data.title}</h3>
+  </a>
+  <p class="work-card-meta"><span>{work.data.year}</span><span>{work.data.category}</span><span>{work.data.type === 'project' ? 'Project' : 'Archive'}</span></p>
+  <p class="work-card-summary">{work.data.summary}</p>
+</article>

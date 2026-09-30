@@ -1,0 +1,8 @@
+---
+import MediaBlock from './MediaBlock.astro';
+import type { ContentMedia } from '../lib/sections';
+import type { Work } from '../lib/works';
+interface Props { work: Work; images: ContentMedia[]; }
+const { work, images } = Astro.props;
+---
+<div class="image-grid">{images.map((media) => <MediaBlock work={work} media={media} />)}</div>

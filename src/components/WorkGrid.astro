@@ -1,0 +1,7 @@
+---
+import type { Work } from '../lib/works';
+import WorkCard from './WorkCard.astro';
+interface Props { works: Work[]; }
+const { works } = Astro.props;
+---
+{works.length === 0 ? <p>暂时没有已发布的作品。</p> : <ul class="work-grid layout-grid">{works.map((work) => <li data-work-type={work.data.type} data-work-year={work.data.year} data-work-category={work.data.category}><WorkCard work={work} /></li>)}</ul>}

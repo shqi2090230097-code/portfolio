@@ -1,0 +1,18 @@
+---
+import { site } from '../data/site';
+---
+<footer class="studio-footer token-footer" id="contact">
+  <token-field>
+    <div class="token-stage">
+      <canvas aria-hidden="true"></canvas>
+      <div class="token-cta">
+        <p>{site.contact.eyebrow}</p>
+        <a href={site.contact.href} data-talk data-page-transition aria-label={site.contact.label}>{site.contact.lines.map(line => <span>{line}</span>)}</a>
+      </div>
+      <div class="token-colophon"><span>{site.title}</span><span>设计作品的长期记录</span></div>
+    </div>
+  </token-field>
+</footer>
+<script>
+  import '../lib/token-field';
+</script>
