@@ -9,13 +9,13 @@
   "scripts": {
     "dev": "astro dev --host 127.0.0.1",
     "check": "astro check",
-    "build": "astro check && astro build",
+    "build": "node scripts/prepare-local-media.mjs && astro check && astro build",
     "preview": "astro preview --host 127.0.0.1",
     "test": "node --test tests/publication.test.mjs",
     "supabase:verify": "node --env-file-if-exists=.env scripts/verify-supabase.mjs"
   },
   "dependencies": {
-    "@astrojs/node": "^11.1.5",
+    "@astrojs/cloudflare": "^14.3.3",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.116.0",
     "astro": "7.3.1"
@@ -24,6 +24,7 @@
     "@astrojs/check": "0.9.10",
     "@astrojs/markdown-satteri": "0.4.0",
     "@types/node": "24.13.3",
-    "typescript": "6.0.3"
+    "typescript": "6.0.3",
+    "wrangler": "^4.144.0"
   }
 }

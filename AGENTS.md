@@ -2,7 +2,7 @@
 
 ## 目标与范围
 
-这是长期保存设计作品的个人网站。优先内容可靠性、可移植性和维护成本。技术栈固定为 Astro + TypeScript，现有 Content Collections 作为回退与本地内容，Supabase Database/Auth/Storage 作为可编辑内容源。使用 Astro Node server 支持即时发布后的动态 slug。未经用户明确要求，不做品牌视觉设计或改动现有公开视觉。
+这是长期保存设计作品的个人网站。优先内容可靠性、可移植性和维护成本。技术栈固定为 Astro + TypeScript，现有 Content Collections 作为回退与本地内容，Supabase Database/Auth/Storage 作为可编辑内容源。使用 Astro Cloudflare server 支持即时发布后的动态 slug。未经用户明确要求，不做品牌视觉设计或改动现有公开视觉。
 
 ## Supabase Admin 长期规则
 
@@ -12,7 +12,7 @@
 - 数据库项目通过 `projects-repository.ts` 映射到现有 Work/ProjectBlock，再交给同一个 `ProjectRenderer`。不要为 Preview、Supabase 或单个项目复制详情页。
 - 本地 Content Collections 必须继续可用。数据库中同 slug 的项目优先，避免 seed 后重复展示。
 - Storage 只保存媒体文件；数据库保存 URL、固有尺寸、alt 和 caption。禁止 base64 入库。删除引用不自动删除 Storage 文件，避免误删其他引用；需要清理时先查引用。
-- Schema/RLS/storage 改动必须同步 `supabase/migrations`、TypeScript 类型、README 与测试。生产部署必须是支持 Node.js 的 Astro server 环境。
+- Schema/RLS/storage 改动必须同步 `supabase/migrations`、TypeScript 类型、README 与测试。生产部署使用 Cloudflare Workers；运行时代码不得依赖 Node 文件系统。
 
 ## 内容契约
 

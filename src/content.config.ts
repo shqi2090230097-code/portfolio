@@ -33,6 +33,8 @@ function workCollection(type: 'project' | 'archive', directory: string) {
       tags: z.array(z.string().trim().min(1)),
       cover: z.object({
         file: z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]*\.(?:png|jpe?g|webp|avif|gif)$/, '填写当前作品目录中的图片文件名'),
+        width: z.number().int().positive().optional(),
+        height: z.number().int().positive().optional(),
         alt: z.string().trim().min(1),
       }).nullable(),
       summary: z.string().trim().min(1),

@@ -1,6 +1,8 @@
 node_modules/
 dist/
+public/media/
 .astro/
+.wrangler/
 .env*
 !.env.example
 .DS_Store

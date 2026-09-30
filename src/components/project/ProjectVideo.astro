@@ -1,7 +1,5 @@
 ---
-import { stat } from 'node:fs/promises';
-import { join } from 'node:path';
-import { mediaUrl, workDirectory, type Work } from '../../lib/works';
+import { mediaUrl, type Work } from '../../lib/works';
 import { resolveMedia } from '../../lib/media';
 import type { ProjectBlock } from '../../lib/project-blocks';
 import type { ContentMedia } from '../../lib/sections';
@@ -12,7 +10,6 @@ const reference = block.source.kind === 'placeholder' ? await resolveMedia(work,
   placeholder: true, width: block.width, height: block.height,
   alt: `${work.data.title} — ${block.title} motion reference`,
 } satisfies ContentMedia) : undefined;
-if (block.source.kind === 'local' && !(await stat(join(workDirectory(work), block.source.file)).catch(() => undefined))?.isFile()) throw new Error(`视频不存在：${work.id}/${block.source.file}`);
 ---
 <figure class="detail-video">
   {(block.source.kind === 'local' || block.source.kind === 'external') ? <video controls playsinline preload="metadata" width={block.width} height={block.height} poster={poster?.src} aria-label={block.title}>

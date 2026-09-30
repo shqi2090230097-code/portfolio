@@ -1,6 +1,4 @@
 import { getCollection, type CollectionEntry } from 'astro:content';
-import { stat } from 'node:fs/promises';
-import { resolve } from 'node:path';
 import { databaseBlocks, getDatabaseProjects, parseCover, type DatabaseProject } from './projects-repository';
 import type { ContentMedia, ContentSection } from './sections';
 import type { ProjectBlock } from './project-blocks';
@@ -25,11 +23,6 @@ export function mediaUrl(work: Work, file: string): string {
   return `/media/${work.collection}/${work.id}/${file}`;
 }
 
-export function workDirectory(work: Work): string {
-  if ('source' in work) throw new Error('远程作品没有本地内容目录');
-  return resolve('content', work.collection, work.id);
-}
-
 // 所有公开页面、详情路径、媒体输出只从这里读取内容。默认拒绝非 published。
 export async function getPublishedWorks(collection?: WorkCollection): Promise<Work[]> {
   const local: LocalWork[] = collection
@@ -39,14 +32,6 @@ export async function getPublishedWorks(collection?: WorkCollection): Promise<Wo
         getCollection('archive', ({ data }) => data.status === 'published'),
       ])).flat();
 
-  for (const work of local) {
-    if (work.data.cover) {
-      const file = resolve(workDirectory(work), work.data.cover.file);
-      if (!(await stat(file).catch(() => undefined))?.isFile()) {
-        throw new Error(`封面文件不存在：${work.collection}/${work.id}/${work.data.cover.file}`);
-      }
-    }
-  }
   const remote: RemoteWork[] = collection === 'archive' ? [] : (await getDatabaseProjects().catch((error) => {
     console.warn(String(error)); return [];
   })).map(databaseProjectToWork);

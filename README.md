@@ -19,14 +19,14 @@ npm test        # 在临时目录验证公开内容、详情路由、资源及�
 npm run preview # 预览 dist 中的正式构建
 ```
 
-正式构建使用 Astro Node server：
+正式构建使用 Astro Cloudflare server：
 
 ```sh
 npm run build
-HOST=127.0.0.1 PORT=4321 node dist/server/entry.mjs
+npx wrangler dev
 ```
 
-部署需要支持 Node.js 的运行环境，并提供下方 Supabase 环境变量。本项目尚未部署。
+Cloudflare Workers Builds 使用 `npm run build` 与 `npx wrangler deploy`，Root directory 为 `/`，并提供下方 Supabase 环境变量。Worker 名称在 `wrangler.jsonc` 中固定为 `millionmeilin`。
 
 ## Supabase Admin
 
@@ -105,6 +105,8 @@ category: "品牌设计"
 tags: ["品牌", "视觉系统"]
 cover:
   file: cover.webp
+  width: 1600
+  height: 1200
   alt: "项目视觉系统的整体展示"
 summary: "一句话说明项目背景和设计成果。"
 featured: false
@@ -119,7 +121,7 @@ featured: false
 ![海报的文字与版式细节](/media/archive/my-poster/detail.webp)
 ```
 
-图片应使用上述 `/media/` 地址，不使用源文件相对路径，不在 Markdown 中通过 import 引入文件。目录内的所有受支持图片会随 published 作品一起公开，所以只放选定的发布图片；PSD、AI、原始素材留在 inbox 或你的独立备份中。Markdown 正文中不要写其他未发布作品的敏感文字或素材链接。
+图片应使用上述 `/media/` 地址，不使用源文件相对路径，不在 Markdown 中通过 import 引入文件。构建时只复制 `published` 作品数据中通过 `file` 明确引用的媒体；建议同时填写真实 `width` / `height` 以避免布局跳动。PSD、AI、未选素材留在 inbox 或独立备份中。Markdown 正文中不要写其他未发布作品的敏感文字或素材链接。
 
 ## 发布状态
 

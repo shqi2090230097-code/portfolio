@@ -1,7 +1,4 @@
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import { imageMetadata } from 'astro/assets/utils';
-import { mediaUrl, workDirectory, type Work } from './works';
+import { mediaUrl, type Work } from './works';
 import type { ContentMedia } from './sections';
 import { portfolioReference } from '../data/showcase-references';
 export async function resolveMedia(work: Work, media: ContentMedia) {
@@ -16,7 +13,7 @@ export async function resolveMedia(work: Work, media: ContentMedia) {
       temporaryReference: true as const, referenceSource: reference.source, referenceSearch: reference.search };
   }
   if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]*\.(?:png|jpe?g|webp|avif|gif)$/.test(media.file)) throw new Error('无效媒体文件名');
-  const file = join(workDirectory(work), media.file);
-  const { width, height } = await imageMetadata(new Uint8Array(await readFile(file)), file);
+  const width = 'width' in media && media.width ? media.width : 1600;
+  const height = 'height' in media && media.height ? media.height : 1200;
   return { ...media, width, height, src: mediaUrl(work, media.file) };
 }

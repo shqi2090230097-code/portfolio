@@ -1,6 +1,6 @@
 import { z } from 'astro/zod';
 export const mediaSchema = z.union([
-  z.object({ file: z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]*\.(?:png|jpe?g|webp|avif|gif)$/), alt: z.string().min(1), caption: z.string().optional() }),
+  z.object({ file: z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]*\.(?:png|jpe?g|webp|avif|gif)$/), width: z.number().int().positive().optional(), height: z.number().int().positive().optional(), alt: z.string().min(1), caption: z.string().optional() }),
   z.object({ url: z.url(), width: z.number().int().positive(), height: z.number().int().positive(), alt: z.string().min(1), caption: z.string().optional() }),
   z.object({ placeholder: z.literal(true), width: z.number().int().positive(), height: z.number().int().positive(), alt: z.string().min(1), caption: z.string().optional() }),
 ]);

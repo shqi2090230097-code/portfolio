@@ -8,7 +8,11 @@ import { createServer } from 'node:net';
 
 const root = resolve(import.meta.dirname, '..');
 const astro = join(root, 'node_modules/astro/bin/astro.mjs');
+const wrangler = join(root, 'node_modules/wrangler/bin/wrangler.js');
 async function build(cwd) {
+  const prepare = spawn(process.execPath, [join(cwd, 'scripts/prepare-local-media.mjs')], { cwd });
+  const prepareCode = await new Promise((resolve, reject) => { prepare.on('error', reject); prepare.on('exit', resolve); });
+  assert.equal(prepareCode, 0, 'local media preparation succeeds');
   const child = spawn(process.execPath, [astro, 'build'], { cwd, env: { ...process.env, ASTRO_TELEMETRY_DISABLED: '1' } });
   let output = '';
   child.stdout.on('data', (chunk) => output += chunk);
@@ -27,7 +31,7 @@ async function preview(cwd, check) {
   await new Promise((resolve) => probe.listen(0, '127.0.0.1', resolve));
   const port = probe.address().port;
   await new Promise((resolve) => probe.close(resolve));
-  const child = spawn(process.execPath, [join(cwd, 'dist/server/entry.mjs')], { cwd, env: { ...process.env, HOST: '127.0.0.1', PORT: String(port), ASTRO_TELEMETRY_DISABLED: '1' }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(process.execPath, [wrangler, 'dev', '--config', join(cwd, 'dist/server/wrangler.json'), '--ip', '127.0.0.1', '--port', String(port)], { cwd, env: { ...process.env, ASTRO_TELEMETRY_DISABLED: '1', WRANGLER_LOG_PATH: join(cwd, 'wrangler-test.log') }, stdio: ['ignore', 'pipe', 'pipe'] });
   let serverOutput = '';
   child.stdout.on('data', (chunk) => serverOutput += chunk);
   child.stderr.on('data', (chunk) => serverOutput += chunk);
@@ -46,16 +50,16 @@ async function preview(cwd, check) {
 function entry(type, status) {
   const sections = [
     { id: 'qa-text', kind: 'text', title: `QA_${type}_${status}_SECTION`, paragraphs: ['模块正文'] },
-    { id: 'qa-media', kind: 'media', width: 'full', media: { file: 'detail.png', alt: `QA_${type}_${status}_MEDIA` } },
+    { id: 'qa-media', kind: 'media', width: 'full', media: { file: 'detail.png', width: 1, height: 1, alt: `QA_${type}_${status}_MEDIA` } },
     { id: 'qa-pair', kind: 'gallery', arrangement: 'pair', images: [{ placeholder: true, width: 800, height: 1100, alt: '竖图占位' }, { placeholder: true, width: 1200, height: 800, alt: '横图占位' }] },
   ];
-  return `---\ntitle: "QA_${type}_${status}_TITLE"\ndate: "2026-09-08"\nyear: 2026\ntype: ${type}\nstatus: ${status}\ncategory: "QA_${type}_${status}_CATEGORY"\ntags: ["QA_${type}_${status}_TAG"]\ncover:\n  file: cover.png\n  alt: "QA_${type}_${status}_ALT"\nsummary: "QA_${type}_${status}_SUMMARY"\nfeatured: true\nsections: ${JSON.stringify(sections)}\n---\n\n## QA_${type}_${status}_BODY\n\n![正文配图](/media/${type === 'project' ? 'projects' : 'archive'}/qa-${status}/detail.png)\n`;
+  return `---\ntitle: "QA_${type}_${status}_TITLE"\ndate: "2026-09-08"\nyear: 2026\ntype: ${type}\nstatus: ${status}\ncategory: "QA_${type}_${status}_CATEGORY"\ntags: ["QA_${type}_${status}_TAG"]\ncover:\n  file: cover.png\n  width: 1\n  height: 1\n  alt: "QA_${type}_${status}_ALT"\nsummary: "QA_${type}_${status}_SUMMARY"\nfeatured: true\nsections: ${JSON.stringify(sections)}\n---\n\n## QA_${type}_${status}_BODY\n\n![正文配图](/media/${type === 'project' ? 'projects' : 'archive'}/qa-${status}/detail.png)\n`;
 }
 
 test('publication boundary: both collections, routes, media, withdrawal, empty state', { timeout: 180000 }, async () => {
   const cwd = await mkdtemp(join(tmpdir(), 'portfolio-publication-'));
   try {
-    for (const path of ['src', 'astro.config.mjs', 'tsconfig.json', 'package.json']) await cp(join(root, path), join(cwd, path), { recursive: true });
+    for (const path of ['src', 'scripts', 'public', 'astro.config.mjs', 'wrangler.jsonc', 'tsconfig.json', 'package.json']) await cp(join(root, path), join(cwd, path), { recursive: true });
     await symlink(join(root, 'node_modules'), join(cwd, 'node_modules'), 'dir');
     for (const [collection, type] of [['projects', 'project'], ['archive', 'archive']]) {
       for (const status of ['published', 'draft', 'private']) {
@@ -147,17 +151,17 @@ test('Supabase migration keeps public reads published-only and Admin writes auth
 
 test('project blocks: editing, ordering, GIF and opt-in video publication', { timeout: 180000 }, async () => {
   const cwd = await mkdtemp(join(tmpdir(), 'portfolio-blocks-'));
-  const image = (alt) => ({ media: { file: 'detail.png', alt }, ratio: 1.5, fit: 'cover' });
+  const image = (alt) => ({ media: { file: 'detail.png', width: 1, height: 1, alt }, ratio: 1.5, fit: 'cover' });
   const blocks = [
     { id: 'hero', type: 'hero', subtitle: 'BLOCKS_DEMO' },
     { id: 'first', type: 'text', heading: 'FIRST_HEADING', body: ['FIRST_BODY'] },
     { id: 'gallery', type: 'gallery', columns: 3, images: [image('KEEP_IMAGE'), image('REMOVE_IMAGE')] },
-    { id: 'gif', type: 'fullImage', image: { media: { file: 'motion.gif', alt: 'GIF_IMAGE' } } },
+    { id: 'gif', type: 'fullImage', image: { media: { file: 'motion.gif', width: 1, height: 1, alt: 'GIF_IMAGE' } } },
     { id: 'video', type: 'video', title: 'LOCAL_VIDEO', source: { kind: 'local', file: 'motion.mp4' }, width: 1920, height: 1080 },
   ];
   const document = (status, value) => entry('project', status).replace('\nsections:', `\nblocks: ${JSON.stringify(value)}\nsections:`);
   try {
-    for (const path of ['src', 'astro.config.mjs', 'tsconfig.json', 'package.json']) await cp(join(root, path), join(cwd, path), { recursive: true });
+    for (const path of ['src', 'scripts', 'public', 'astro.config.mjs', 'wrangler.jsonc', 'tsconfig.json', 'package.json']) await cp(join(root, path), join(cwd, path), { recursive: true });
     await symlink(join(root, 'node_modules'), join(cwd, 'node_modules'), 'dir');
     for (const status of ['published', 'draft', 'private']) {
       const dir = join(cwd, 'content/projects', `qa-${status}`);
