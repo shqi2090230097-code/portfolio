@@ -1,14 +1,19 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import MeilinHero from '../components/MeilinHero.astro';
+import ShowcaseCarousel from '../components/ShowcaseCarousel.astro';
 import PortfolioIndex from '../components/PortfolioIndex.astro';
 import MasonryPortfolio from '../components/MasonryPortfolio.astro';
 import { getPublishedWorks } from '../lib/works';
 import '../styles/meilin.css';
+import '../styles/showcase.css';
 const works = await getPublishedWorks();
 ---
 <BaseLayout title="首页" wide scene>
   <MeilinHero works={works} />
+  <section class="showcase-page showcase-page--home" aria-label="Selected work showcase">
+    <ShowcaseCarousel works={works} mode="embedded" />
+  </section>
   <PortfolioIndex works={works} />
   <MasonryPortfolio works={works} />
   <footer class="meilin-end" id="contact"><p>HAVE A PROJECT IN MIND?</p><a href="/about">Let’s talk<span aria-hidden="true">↗</span></a><div><span>MEILIN © 2026</span><span>DESIGN / ART DIRECTION / VISUAL STORIES</span></div></footer>

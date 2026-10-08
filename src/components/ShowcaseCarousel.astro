@@ -4,8 +4,8 @@ import { workUrl } from '../lib/works';
 import { workVisual } from '../lib/work-visual';
 import { resolveMedia } from '../lib/media';
 import { showcaseReferences } from '../data/showcase-references';
-interface Props { works: Work[] }
-const { works } = Astro.props;
+interface Props { works: Work[]; mode?: 'page' | 'embedded' }
+const { works, mode = 'page' } = Astro.props;
 const count = Math.max(18, works.length);
 const slots = await Promise.all(Array.from({ length: count }, async (_, index) => {
   const work = works[index];
@@ -18,14 +18,15 @@ const slots = await Promise.all(Array.from({ length: count }, async (_, index) =
   return { index, work: work ?? null, media, reference };
 }));
 ---
-<showcase-carousel class="showcase-scroll" data-count={count}>
+<showcase-carousel class="showcase-scroll" data-count={count} data-mode={mode}>
   <div class="showcase-stage">
     <div class="showcase-caption"><span>MEILIN / SELECTED WORK</span><span>SCROLL TO ROTATE ↓</span></div>
     <div class="showcase-orbit" aria-label="旋转作品索引">
-      {slots.map(({ index, work, media, reference }) => <article class="showcase-card" data-slot={index} data-title={work?.data.title ?? 'FUTURE WORK'} data-category={work?.data.category ?? 'REFERENCE SLOT'} data-year={work?.data.year ?? '—'}>
+      {mode === 'embedded' && <div class="showcase-horizontal-track" aria-hidden="true">{slots.map(() => <span></span>)}</div>}
+      {slots.map(({ index, work, media, reference }) => <article class="showcase-card" data-slot={index} data-title={work?.data.title ?? reference.search.toUpperCase()} data-category={work?.data.category ?? 'VISUAL REFERENCE'} data-year={work?.data.year ?? '—'}>
         {work ? <button type="button" class="showcase-card-face" data-open={index} aria-label={`打开作品 ${work.data.title}`} tabindex={index === 0 ? 0 : -1}>
           <span class="showcase-card-media"><img src={media.src} alt={media.alt} width={media.width} height={media.height} loading={index < 3 ? 'eager' : 'lazy'} decoding="async" /></span>
-        </button> : <div class="showcase-card-face showcase-card-future" aria-label={`预留作品展位 ${String(index + 1).padStart(2, '0')}`}><span class="showcase-card-media"><img src={media.src} alt={media.alt} width={media.width} height={media.height} loading="lazy" decoding="async" /></span><span class="showcase-reference-mark">FUTURE WORK / VISUAL REFERENCE</span></div>}
+        </button> : <div class="showcase-card-face showcase-card-future" aria-label={`视觉参考 ${String(index + 1).padStart(2, '0')}`}><span class="showcase-card-media"><img src={media.src} alt={media.alt} width={media.width} height={media.height} loading="lazy" decoding="async" /></span><span class="showcase-reference-mark">VISUAL REFERENCE / {String(index + 1).padStart(2, '0')}</span></div>}
         <a class="showcase-reference-source" href={reference.source} target="_blank" rel="noreferrer" aria-label={`临时视觉参考来源：${reference.search}`}>REFERENCE ↗</a>
       </article>)}
     </div>
@@ -55,6 +56,7 @@ const slots = await Promise.all(Array.from({ length: count }, async (_, index) =
   class ShowcaseCarousel extends HTMLElement {
     connectedCallback() {
       const cards = [...this.querySelectorAll<HTMLElement>('.showcase-card')];
+      const orbit = this.querySelector<HTMLElement>('.showcase-orbit');
       const snapPoints = [...this.querySelectorAll<HTMLElement>('.showcase-snap-point')];
       const detail = this.querySelector<HTMLDialogElement>('.showcase-detail');
       const currentLabel = this.querySelector<HTMLElement>('[data-current]');
@@ -64,11 +66,21 @@ const slots = await Promise.all(Array.from({ length: count }, async (_, index) =
       const counter = this.querySelector<HTMLElement>('[data-detail-counter]');
       const reduced = matchMedia('(prefers-reduced-motion: reduce)');
       const fine = matchMedia('(hover: hover) and (pointer: fine)');
+      const embedded = this.dataset.mode === 'embedded';
       if (!cards.length) return;
       let current = 0, target = 0, eyeX = 0, eyeY = 0, targetEyeX = 0, targetEyeY = 0, active = -1;
       let top = 0, step = innerHeight, lastTrigger: HTMLElement | null = null;
       const measure = () => { top = scrollY + this.getBoundingClientRect().top; step = snapPoints[0]?.getBoundingClientRect().height || innerHeight; updateTarget(); };
       const updateTarget = () => { target = Math.max(0, Math.min(cards.length - 1, (scrollY - top) / step)); wake(tick); };
+      const setActive = (nearest: number) => {
+        if (nearest === active) return;
+        active = nearest;
+        const card = cards[nearest], real = !!card.querySelector('button');
+        if (currentLabel) currentLabel.textContent = String(nearest + 1).padStart(2, '0');
+        if (title) title.textContent = card.dataset.title || 'FUTURE WORK';
+        if (category) category.textContent = real ? `${card.dataset.category} · ${card.dataset.year}` : 'OPEN SLOT';
+        if (hint) hint.textContent = real ? 'CLICK A WORK TO ENTER ↗' : 'A PLACE FOR YOUR NEXT WORK';
+      };
       const tick = (dt: number) => {
         current = damp(current, target, .105, dt);
         eyeX = damp(eyeX, targetEyeX, .08, dt);
@@ -99,18 +111,11 @@ const slots = await Promise.all(Array.from({ length: count }, async (_, index) =
           if (button) button.tabIndex = centered ? 0 : -1;
         });
         const nearest = Math.max(0, Math.min(cards.length - 1, Math.round(current)));
-        if (nearest !== active) {
-          active = nearest;
-          const card = cards[nearest], real = !!card.querySelector('button');
-          if (currentLabel) currentLabel.textContent = String(nearest + 1).padStart(2, '0');
-          if (title) title.textContent = card.dataset.title || 'FUTURE WORK';
-          if (category) category.textContent = real ? `${card.dataset.category} · ${card.dataset.year}` : 'OPEN SLOT';
-          if (hint) hint.textContent = real ? 'CLICK THE CENTER TO ENTER ↗' : 'A PLACE FOR YOUR NEXT WORK';
-        }
+        setActive(nearest);
         return Math.abs(target - current) + Math.abs(targetEyeX - eyeX) + Math.abs(targetEyeY - eyeY) > .015;
       };
       cards.forEach((card, index) => card.querySelector<HTMLButtonElement>('[data-open]')?.addEventListener('click', () => {
-        if ((!reduced.matches && Math.abs(index - current) > .12) || !detail) return;
+        if ((!embedded && !reduced.matches && Math.abs(index - current) > .12) || !detail) return;
         lastTrigger = card.querySelector('button');
         this.querySelectorAll<HTMLElement>('.showcase-detail-project').forEach(project => { project.hidden = project.dataset.detailIndex !== String(index); });
         if (counter) counter.textContent = `${String(index + 1).padStart(2, '0')} / ${String(cards.length).padStart(2, '0')}`;
@@ -119,8 +124,68 @@ const slots = await Promise.all(Array.from({ length: count }, async (_, index) =
       }));
       detail?.querySelector('[data-close]')?.addEventListener('click', () => detail.close());
       detail?.addEventListener('close', () => lastTrigger?.focus({ preventScroll: true }));
-      if (reduced.matches) cards.forEach(card => { const button = card.querySelector<HTMLButtonElement>('button'); if (button) button.tabIndex = 0; });
-      if (!reduced.matches) {
+      if (embedded && orbit) {
+        cards.forEach((card, index) => { const button = card.querySelector<HTMLButtonElement>('button'); if (button) button.tabIndex = index === 0 ? 0 : -1; });
+        let dragging = false, moved = false, startX = 0, startScroll = 0;
+        const embeddedTick = (dt: number) => {
+          current = damp(current, target, .105, dt);
+          eyeX = damp(eyeX, targetEyeX, .08, dt); eyeY = damp(eyeY, targetEyeY, .08, dt);
+          cards.forEach((card, index) => {
+            const distance = index - current;
+            const theta = Math.max(-2.8, Math.min(2.8, distance * .77));
+            const cos = Math.cos(theta), sin = Math.sin(theta);
+            const compact = innerWidth < 768;
+            const x = sin * (compact ? innerWidth * .58 : Math.min(innerWidth * .58, 830));
+            const y = (1 - cos) * (compact ? 58 : 92);
+            const z = (cos - 1) * (compact ? 760 : 1200);
+            const scale = Math.max(.35, .36 + .64 * Math.pow(Math.max(0, cos), 3));
+            const rotate = -sin * (compact ? 38 : 48);
+            const opacity = Math.pow(Math.max(0, cos), 2.5);
+            const viewportX = orbit.scrollLeft + x;
+            card.style.transform = `translate3d(calc(-50% + ${viewportX.toFixed(1)}px), calc(-50% + ${y.toFixed(1)}px), ${z.toFixed(1)}px) rotateY(${rotate.toFixed(1)}deg) scale(${scale.toFixed(3)})`;
+            card.style.opacity = String(opacity);
+            card.style.zIndex = String(100 - Math.round(Math.abs(distance) * 12));
+            const factor = 1 - Math.min(1, Math.abs(distance));
+            const face = card.querySelector<HTMLElement>('.showcase-card-face');
+            const image = card.querySelector<HTMLElement>('.showcase-card-media img, .showcase-card-empty');
+            if (face) face.style.transform = `rotateX(${(eyeY * factor).toFixed(2)}deg) rotateY(${(eyeX * factor).toFixed(2)}deg)`;
+            if (image) image.style.transform = `translate3d(${(eyeX * factor * 1.25).toFixed(1)}px, ${(eyeY * factor * 1.6).toFixed(1)}px, 0) scale(1.045)`;
+            const centered = Math.abs(distance) < .16;
+            card.style.pointerEvents = centered ? 'auto' : 'none';
+            const button = card.querySelector<HTMLButtonElement>('button');
+            if (button) button.tabIndex = centered ? 0 : -1;
+          });
+          setActive(Math.max(0, Math.min(cards.length - 1, Math.round(current))));
+          return Math.abs(target - current) + Math.abs(targetEyeX - eyeX) + Math.abs(targetEyeY - eyeY) > .015;
+        };
+        const updateEmbedded = () => {
+          const maximum = Math.max(1, orbit.scrollWidth - orbit.clientWidth);
+          target = orbit.scrollLeft / maximum * (cards.length - 1);
+          wake(embeddedTick);
+        };
+        orbit.addEventListener('scroll', updateEmbedded, { passive: true });
+        orbit.addEventListener('pointerdown', event => {
+          if (event.button !== 0 || event.pointerType === 'touch') return;
+          dragging = true; moved = false; startX = event.clientX; startScroll = orbit.scrollLeft;
+          orbit.setPointerCapture(event.pointerId); orbit.classList.add('is-dragging');
+        });
+        orbit.addEventListener('pointermove', event => {
+          if (!dragging) return;
+          const delta = event.clientX - startX;
+          if (Math.abs(delta) > 7) moved = true;
+          if (moved) orbit.scrollLeft = startScroll - delta;
+        });
+        const stopDrag = (event: PointerEvent) => { if (!dragging) return; dragging = false; orbit.classList.remove('is-dragging'); if (orbit.hasPointerCapture(event.pointerId)) orbit.releasePointerCapture(event.pointerId); };
+        orbit.addEventListener('pointerup', stopDrag);
+        orbit.addEventListener('pointercancel', stopDrag);
+        orbit.addEventListener('click', event => { if (moved) { event.preventDefault(); event.stopPropagation(); moved = false; } }, true);
+        orbit.addEventListener('wheel', event => { if (!event.shiftKey || !event.deltaY) return; event.preventDefault(); orbit.scrollLeft += event.deltaY; }, { passive: false });
+        orbit.addEventListener('pointermove', event => { if (!fine.matches || dragging) return; targetEyeX = (event.clientX / innerWidth - .5) * 11; targetEyeY = (event.clientY / innerHeight - .5) * -12; wake(embeddedTick); }, { passive: true });
+        orbit.addEventListener('pointerleave', () => { targetEyeX = 0; targetEyeY = 0; wake(embeddedTick); });
+        window.addEventListener('pagehide', () => stop(embeddedTick), { once: true });
+        updateEmbedded();
+      } else if (reduced.matches) cards.forEach(card => { const button = card.querySelector<HTMLButtonElement>('button'); if (button) button.tabIndex = 0; });
+      else {
         measure(); updateTarget();
         window.addEventListener('scroll', updateTarget, { passive: true });
         window.addEventListener('resize', measure, { passive: true });
